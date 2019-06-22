@@ -1,5 +1,6 @@
 # motion_decision
 
+[![Build Status](https://travis-ci.org/amslabtech/motion_decision.svg?branch=master)](https://travis-ci.org/amslabtech/motion_decision)
 ![issue_opened](https://img.shields.io/github/issues/amslabtech/motion_decision.svg)
 ![issue_closed](https://img.shields.io/github/issues-closed/amslabtech/motion_decision.svg)
 
