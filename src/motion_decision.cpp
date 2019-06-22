@@ -9,6 +9,7 @@ class MotionDecision{
 		void LocalPathCallback(const geometry_msgs::TwistConstPtr& msg);
 		void JoyCallback(const sensor_msgs::JoyConstPtr& msg);
 		void EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg);
+		void TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg);
 
 		void process();
 
@@ -20,11 +21,13 @@ class MotionDecision{
 		ros::Subscriber local_path_sub;
 		ros::Subscriber joy_sub;
 		ros::Subscriber emergency_stop_flag_sub;
+		ros::Subscriber task_stop_flag_sub;
 
 		//publisher
 		ros::Publisher vel_pub;
 
 		bool emergency_stop_flag = false;
+		bool task_stop_flag = false;
 		bool auto_flag = false;
 		bool move_flag = false;
 		bool joy_flag = false;
@@ -40,6 +43,7 @@ MotionDecision::MotionDecision()
 	local_path_sub = nh.subscribe("/local_path/cmd_vel",1, &MotionDecision::LocalPathCallback, this);
 	joy_sub = nh.subscribe("/joy",1, &MotionDecision::JoyCallback, this);
 	emergency_stop_flag_sub = nh.subscribe("/emergency_stop",1, &MotionDecision::EmergencyStopFlagCallback, this);
+	task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::TaskStopFlagCallback, this);
 
 	//publisher
 	vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
@@ -56,9 +60,9 @@ void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
 void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 {
 	joy = *msg;
-	if(joy.buttons[8]){ //square button
+	if(joy.buttons[8]){ //select button
 		auto_flag = false;
-	}else if(joy.buttons[9]){ // triangle button
+	}else if(joy.buttons[9]){ // start button
 		auto_flag = true;
 	}
 
@@ -73,6 +77,11 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 {
 	emergency_stop_flag = msg->data;
+}
+
+void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
+{
+	task_stop_flag = msg->data;
 }
 
 void MotionDecision::process()
@@ -100,6 +109,11 @@ void MotionDecision::process()
 			std::cout << vel << std::endl;
 		}else{
 			std::cout << "stop : (" << (auto_flag ? "auto" : "manual") << ")"<< std::endl;
+			vel.linear.x = 0.0;
+			vel.angular.z = 0.0;
+		}
+		if(task_stop_flag){
+			std::cout << "task stop" << std::endl;
 			vel.linear.x = 0.0;
 			vel.angular.z = 0.0;
 		}
