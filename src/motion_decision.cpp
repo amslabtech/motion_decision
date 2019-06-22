@@ -26,14 +26,17 @@ class MotionDecision{
 		//publisher
 		ros::Publisher vel_pub;
 
-		bool emergency_stop_flag = false;
-		bool task_stop_flag = false;
-		bool auto_flag = false;
-		bool move_flag = false;
-		bool joy_flag = false;
+		bool emergency_stop_flag;
+		bool task_stop_flag;
+		bool auto_flag;
+		bool move_flag;
+		bool joy_flag;
 		geometry_msgs::Twist cmd_vel;
+		geometry_msgs::Twist joy_vel;
 		sensor_msgs::Joy joy;
-		int HZ = 20;
+		int HZ;
+		double MAX_SPEED;
+		double MAX_YAWRATE;
 };
 
 MotionDecision::MotionDecision()
@@ -47,6 +50,16 @@ MotionDecision::MotionDecision()
 
 	//publisher
 	vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
+
+	private_nh.param("HZ", HZ, {20});
+	private_nh.param("MAX_SPEED", MAX_SPEED, {1.0});
+	private_nh.param("MAX_YAWRATE", MAX_YAWRATE, {1.0});
+
+	emergency_stop_flag = false;
+	task_stop_flag = false;
+	auto_flag = false;
+	move_flag = false;
+	joy_flag = false;
 
 	cmd_vel.linear.x = 0.0;
 	cmd_vel.angular.z = 0.0;
@@ -71,7 +84,13 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 	}else if(joy.buttons[1]){ // circle button
 		move_flag = true;
 	}
-	joy_flag = true;
+	joy_vel.linear.x = joy.axes[1]*MAX_SPEED;
+	joy_vel.angular.z = joy.axes[0]*MAX_YAWRATE;
+	if(joy.buttons[6]){
+		joy_flag = true;
+	}else{
+		joy_flag = false;
+	}
 }
 
 void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg)
@@ -97,9 +116,8 @@ void MotionDecision::process()
 				vel = cmd_vel;
 			}else{
 				std::cout << "manual";
-				if(joy_flag && joy.buttons[6]){ // L2 button
-					vel.linear.x = joy.axes[1];
-					vel.angular.z = joy.axes[0];
+				if(joy_flag){
+					vel = joy_vel;
 				}else{
 					vel.linear.x = 0.0;
 					vel.angular.z = 0.0;
@@ -122,7 +140,6 @@ void MotionDecision::process()
 			vel.linear.x = 0.0;
 			vel.angular.z = 0.0;
 		}
-		joy_flag = false;
 		vel_pub.publish(vel);
 		loop_rate.sleep();
 		ros::spinOnce();
