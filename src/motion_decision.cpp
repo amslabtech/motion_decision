@@ -80,22 +80,26 @@ void MotionDecision::process()
 	ros::Rate loop_rate(HZ);
 	while(ros::ok()){
 		geometry_msgs::Twist vel;
+		std::cout << "==== motion decision ====" << std::endl;
 		if(move_flag){
+			std::cout << "move : (";
 			if(auto_flag){
-				std::cout << "auto" << std::endl;
+				std::cout << "auto";
 				vel = cmd_vel;
 			}else{
-				std::cout << "manual" << std::endl;
+				std::cout << "manual";
 				if(joy_flag && joy.buttons[6]){ // L2 button
-					vel.linear.x = joy.axes[0];
-					vel.angular.z = joy.axes[1];
+					vel.linear.x = joy.axes[1];
+					vel.angular.z = joy.axes[0];
 				}else{
 					vel.linear.x = 0.0;
 					vel.angular.z = 0.0;
 				}
 			}
+			std::cout << ")" << std::endl;
+			std::cout << vel << std::endl;
 		}else{
-			std::cout << "stop" << std::endl;
+			std::cout << "stop : (" << (auto_flag ? "auto" : "manual") << ")"<< std::endl;
 			vel.linear.x = 0.0;
 			vel.angular.z = 0.0;
 		}
