@@ -73,9 +73,9 @@ void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
 void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 {
 	joy = *msg;
-	if(joy.buttons[8]){ //select button
+	if(joy.buttons[3]){ //square button
 		auto_flag = false;
-	}else if(joy.buttons[9]){ // start button
+	}else if(joy.buttons[2]){ // triangle button
 		auto_flag = true;
 	}
 
