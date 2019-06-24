@@ -37,6 +37,7 @@ class MotionDecision{
 		int HZ;
 		double MAX_SPEED;
 		double MAX_YAWRATE;
+		double VEL_RATIO;
 };
 
 MotionDecision::MotionDecision()
@@ -54,6 +55,7 @@ MotionDecision::MotionDecision()
 	private_nh.param("HZ", HZ, {20});
 	private_nh.param("MAX_SPEED", MAX_SPEED, {1.0});
 	private_nh.param("MAX_YAWRATE", MAX_YAWRATE, {1.0});
+	private_nh.param("VEL_RATIO", VEL_RATIO, {0.5});
 
 	emergency_stop_flag = false;
 	task_stop_flag = false;
@@ -86,6 +88,21 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 	}
 	joy_vel.linear.x = joy.axes[1]*MAX_SPEED;
 	joy_vel.angular.z = joy.axes[0]*MAX_YAWRATE;
+
+	if(joy.buttons[13]){
+		joy_vel.linear.x = VEL_RATIO*MAX_SPEED;
+		joy_vel.angular.z = 0.0;
+	}else if(joy.buttons[14]){
+		joy_vel.linear.x = -VEL_RATIO*MAX_SPEED;
+		joy_vel.angular.z = 0.0;
+	}else if(joy.buttons[15]){
+		joy_vel.linear.x = 0.0;
+		joy_vel.angular.z = VEL_RATIO*MAX_YAWRATE;
+	}else if(joy.buttons[16]){
+		joy_vel.linear.x = 0.0;
+		joy_vel.angular.z = -VEL_RATIO*MAX_YAWRATE;
+	}
+
 	if(joy.buttons[6]){
 		joy_flag = true;
 	}else{
