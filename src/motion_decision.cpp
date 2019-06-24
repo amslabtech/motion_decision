@@ -25,12 +25,14 @@ class MotionDecision{
 
 		//publisher
 		ros::Publisher vel_pub;
+		ros::Publisher intersection_flag_pub;
 
 		bool emergency_stop_flag;
 		bool task_stop_flag;
 		bool auto_flag;
 		bool move_flag;
 		bool joy_flag;
+		bool intersection_flag;
 		geometry_msgs::Twist cmd_vel;
 		geometry_msgs::Twist joy_vel;
 		sensor_msgs::Joy joy;
@@ -51,6 +53,7 @@ MotionDecision::MotionDecision()
 
 	//publisher
 	vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
+	intersection_flag_pub = nh.advertise<std_msgs::Bool>("/intersection_flag",1,true);
 
 	private_nh.param("HZ", HZ, {20});
 	private_nh.param("MAX_SPEED", MAX_SPEED, {1.0});
@@ -62,6 +65,7 @@ MotionDecision::MotionDecision()
 	auto_flag = false;
 	move_flag = false;
 	joy_flag = false;
+	intersection_flag = false;
 
 	cmd_vel.linear.x = 0.0;
 	cmd_vel.angular.z = 0.0;
@@ -101,6 +105,12 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 	}else if(joy.buttons[16]){
 		joy_vel.linear.x = 0.0;
 		joy_vel.angular.z = -VEL_RATIO*MAX_YAWRATE;
+	}
+
+	if(joy.buttons[5]){
+		intersection_flag = true;
+	}else{
+		intersection_flag = false;
 	}
 
 	if(joy.buttons[6]){
@@ -156,6 +166,12 @@ void MotionDecision::process()
 			std::cout << "emergency stop" << std::endl;
 			vel.linear.x = 0.0;
 			vel.angular.z = 0.0;
+		}	
+		if(intersection_flag){
+			std_msgs::Bool flag;
+			flag.data=true;
+			intersection_flag_pub.publish(flag);
+			std::cout << "=========intersection=============" << std::endl;
 		}
 		vel_pub.publish(vel);
 		loop_rate.sleep();
