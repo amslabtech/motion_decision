@@ -117,7 +117,9 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
 		count ++;
 	}
 	if(front_min_range < SAFETY_DISTANCE){
-		safety_mode_flag = true;
+	    if(front_min_range > SAFETY_DISTANCE*0.5){
+		    safety_mode_flag = true;
+        }
 	}
 	front_laser_flag = true;
 }
@@ -136,7 +138,9 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 		count ++;
 	}
 	if(rear_min_range < SAFETY_DISTANCE){
-		safety_mode_flag = true;
+	    if(rear_min_range > SAFETY_DISTANCE*0.5){
+		    safety_mode_flag = true;
+        }
 	}
 	rear_laser_flag = true;
 }
