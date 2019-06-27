@@ -202,7 +202,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
 			cmd_vel.linear.x = -0.2;
 			cmd_vel.angular.z = 0.0;
 		}else{
-			if(front_min_idx > front_laser.ranges.size()*0.5){
+			if(front_min_idx < front_laser.ranges.size()*0.5){
 				cmd_vel.linear.x = 0.0;
 				cmd_vel.angular.z = 0.2;
 			}else{
