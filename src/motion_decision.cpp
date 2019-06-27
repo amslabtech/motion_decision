@@ -2,6 +2,7 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/Joy.h>
+#include <sensor_msgs/LaserScan.h>
 
 class MotionDecision{
 	public:
@@ -10,6 +11,8 @@ class MotionDecision{
 		void JoyCallback(const sensor_msgs::JoyConstPtr& msg);
 		void EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg);
 		void TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg);
+		void FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
+		void RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
 
 		void process();
 
@@ -22,10 +25,14 @@ class MotionDecision{
 		ros::Subscriber joy_sub;
 		ros::Subscriber emergency_stop_flag_sub;
 		ros::Subscriber task_stop_flag_sub;
+		ros::Subscriber front_laser_sub;
+		ros::Subscriber rear_laser_sub;
 
 		//publisher
 		ros::Publisher vel_pub;
 		ros::Publisher intersection_flag_pub;
+
+		void recovery_mode(geometry_msgs::Twist& cmd_vel);
 
 		bool emergency_stop_flag;
 		bool task_stop_flag;
@@ -33,13 +40,25 @@ class MotionDecision{
 		bool move_flag;
 		bool joy_flag;
 		bool intersection_flag;
+		bool safety_mode_flag;
+		bool front_laser_flag;
+		bool rear_laser_flag;
 		geometry_msgs::Twist cmd_vel;
 		geometry_msgs::Twist joy_vel;
+		sensor_msgs::LaserScan front_laser;
+		sensor_msgs::LaserScan rear_laser;
 		sensor_msgs::Joy joy;
+		float front_min_range;
+		float rear_min_range;
 		int HZ;
 		double MAX_SPEED;
 		double MAX_YAWRATE;
 		double VEL_RATIO;
+		double SAFETY_DISTANCE;
+		int RECOVERY_MODE_THRESHHOLD;
+		int stop_count;
+		int front_min_idx;
+		int rear_min_idx;
 };
 
 MotionDecision::MotionDecision()
@@ -48,6 +67,8 @@ MotionDecision::MotionDecision()
 	//subscriber
 	local_path_sub = nh.subscribe("/local_path/cmd_vel",1, &MotionDecision::LocalPathCallback, this);
 	joy_sub = nh.subscribe("/joy",1, &MotionDecision::JoyCallback, this);
+	front_laser_sub = nh.subscribe("/front_laser/scan",1, &MotionDecision::FrontLaserCallback, this);
+	rear_laser_sub = nh.subscribe("/rear_laser/scan",1, &MotionDecision::RearLaserCallback, this);
 	emergency_stop_flag_sub = nh.subscribe("/emergency_stop",1, &MotionDecision::EmergencyStopFlagCallback, this);
 	task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::TaskStopFlagCallback, this);
 
@@ -59,13 +80,19 @@ MotionDecision::MotionDecision()
 	private_nh.param("MAX_SPEED", MAX_SPEED, {1.0});
 	private_nh.param("MAX_YAWRATE", MAX_YAWRATE, {1.0});
 	private_nh.param("VEL_RATIO", VEL_RATIO, {0.5});
+	private_nh.param("SAFETY_DISTANCE", SAFETY_DISTANCE, {0.6});
+	private_nh.param("RECOVERY_MODE_THRESHHOLD", RECOVERY_MODE_THRESHHOLD, {60});
 
 	emergency_stop_flag = false;
 	task_stop_flag = false;
+	safety_mode_flag = false;
 	auto_flag = false;
 	move_flag = false;
 	joy_flag = false;
+	front_laser_flag = false;
+	rear_laser_flag = false;
 	intersection_flag = false;
+	stop_count = 0;
 
 	cmd_vel.linear.x = 0.0;
 	cmd_vel.angular.z = 0.0;
@@ -74,6 +101,44 @@ MotionDecision::MotionDecision()
 void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
 {
 	cmd_vel = *msg;
+}
+
+void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
+{
+	front_laser = *msg;
+	front_min_range = front_laser.range_max;
+	front_min_idx = 0;
+	int count = 0;
+	for(auto range : front_laser.ranges){
+		if(range < front_min_range){
+			front_min_range = range;
+			front_min_idx = count;
+		}
+		count ++;
+	}
+	if(front_min_range < SAFETY_DISTANCE){
+		safety_mode_flag = true;
+	}
+	front_laser_flag = true;
+}
+
+void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
+{
+	rear_laser = *msg;
+	rear_min_range = rear_laser.range_max;
+	rear_min_idx = 0;
+	int count = 0;
+	for(auto range : rear_laser.ranges){
+		if(range < rear_min_range){
+			rear_min_range = range;
+			rear_min_idx = count;
+		}
+		count ++;
+	}
+	if(rear_min_range < SAFETY_DISTANCE){
+		safety_mode_flag = true;
+	}
+	rear_laser_flag = true;
 }
 
 void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
@@ -130,6 +195,27 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 	task_stop_flag = msg->data;
 }
 
+void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
+{
+	if(front_min_range < SAFETY_DISTANCE){
+		if(rear_min_range > SAFETY_DISTANCE){
+			cmd_vel.linear.x = -0.2;
+			cmd_vel.angular.z = 0.0;
+		}else{
+			if(front_min_idx > front_laser.ranges.size()*0.5){
+				cmd_vel.linear.x = 0.0;
+				cmd_vel.angular.z = 0.2;
+			}else{
+				cmd_vel.linear.x = 0.0;
+				cmd_vel.angular.z = -0.2;
+			}
+		}
+	}
+	if(front_min_range > SAFETY_DISTANCE*1.2){
+		safety_mode_flag = false;
+	}
+}
+
 void MotionDecision::process()
 {
 	ros::Rate loop_rate(HZ);
@@ -141,6 +227,16 @@ void MotionDecision::process()
 			if(auto_flag){
 				std::cout << "auto";
 				vel = cmd_vel;
+				if(safety_mode_flag){
+					if(stop_count > RECOVERY_MODE_THRESHHOLD){
+						recovery_mode(vel);
+						stop_count = 0;
+					}else{
+						vel.linear.x = 0.0;
+						vel.angular.z = 0.0;
+						stop_count ++;
+					}
+				}
 			}else{
 				std::cout << "manual";
 				if(joy_flag){
@@ -173,6 +269,18 @@ void MotionDecision::process()
 			intersection_flag_pub.publish(flag);
 			std::cout << "=========intersection=============" << std::endl;
 		}
+		
+        if(vel.linear.x > MAX_SPEED){
+			vel.linear.x = MAX_SPEED;
+		}else if(vel.linear.x < -MAX_SPEED){
+			vel.linear.x = MAX_SPEED;
+		}
+        if(vel.angular.z > MAX_YAWRATE){
+			vel.angular.z = MAX_YAWRATE;
+		}else if(vel.angular.z < -MAX_YAWRATE){
+			vel.angular.z = -MAX_YAWRATE;
+		}
+
 		vel_pub.publish(vel);
 		loop_rate.sleep();
 		ros::spinOnce();
