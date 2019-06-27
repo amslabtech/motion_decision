@@ -119,6 +119,8 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
 	if(front_min_range < SAFETY_DISTANCE){
 	    if(front_min_range > SAFETY_DISTANCE*0.5){
 		    safety_mode_flag = true;
+        }else{
+		    safety_mode_flag = false;
         }
 	}
 	front_laser_flag = true;
@@ -140,6 +142,8 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 	if(rear_min_range < SAFETY_DISTANCE){
 	    if(rear_min_range > SAFETY_DISTANCE*0.5){
 		    safety_mode_flag = true;
+        }else{
+		    safety_mode_flag = false;
         }
 	}
 	rear_laser_flag = true;
@@ -201,6 +205,7 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 
 void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
 {
+    std::cout << "=== recovery mode ===" << std::endl;
 	if(front_min_range < SAFETY_DISTANCE){
 		if(rear_min_range > SAFETY_DISTANCE){
 			cmd_vel.linear.x = -0.2;
@@ -232,6 +237,8 @@ void MotionDecision::process()
 				std::cout << "auto";
 				vel = cmd_vel;
 				if(safety_mode_flag){
+			        std::cout << ")" << std::endl;
+			        std::cout << "=== safety mode ===" << std::endl;
 					if(stop_count > RECOVERY_MODE_THRESHHOLD){
 						recovery_mode(vel);
 						stop_count = 0;
@@ -240,7 +247,9 @@ void MotionDecision::process()
 						vel.angular.z = 0.0;
 						stop_count ++;
 					}
-				}
+				}else{
+                    stop_count = 0;
+                }
 			}else{
 				std::cout << "manual";
 				if(joy_flag){
