@@ -218,8 +218,16 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
     std::cout << "=== recovery mode ===" << std::endl;
 	if(front_min_range < SAFETY_DISTANCE){
 		if(rear_min_range > SAFETY_DISTANCE){
-			cmd_vel.linear.x = -0.2;
-			cmd_vel.angular.z = 0.0;
+			if(front_min_idx > front_laser.ranges.size()*2.0/3.0){
+                cmd_vel.linear.x = -0.2;
+                cmd_vel.angular.z = 0.15;
+            }else if((front_laser.ranges.size()*1.0/3.0 < front_min_idx) && (front_min_idx < front_laser.ranges.size()*2.0/3.0)){
+                cmd_vel.linear.x = -0.2;
+                cmd_vel.angular.z = 0.0;
+            }else{
+                cmd_vel.linear.x = -0.2;
+                cmd_vel.angular.z = -0.15;
+            }
 		}else{
 			if(front_min_idx > front_laser.ranges.size()*0.5){
 				cmd_vel.linear.x = 0.0;
@@ -284,14 +292,14 @@ void MotionDecision::process()
 			std::cout << "emergency stop" << std::endl;
 			vel.linear.x = 0.0;
 			vel.angular.z = 0.0;
-		}	
+		}
 		if(intersection_flag){
 			std_msgs::Bool flag;
 			flag.data=true;
 			intersection_flag_pub.publish(flag);
 			std::cout << "=========intersection=============" << std::endl;
 		}
-		
+
         if(vel.linear.x > MAX_SPEED){
 			vel.linear.x = MAX_SPEED;
 		}else if(vel.linear.x < -MAX_SPEED){
