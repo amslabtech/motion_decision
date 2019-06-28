@@ -55,7 +55,7 @@ class MotionDecision{
 		double MAX_YAWRATE;
 		double VEL_RATIO;
 		double SAFETY_DISTANCE;
-		int RECOVERY_MODE_THRESHHOLD;
+		int RECOVERY_MODE_THRESHOLD;
 		int stop_count;
 		int front_min_idx;
 		int rear_min_idx;
@@ -81,7 +81,7 @@ MotionDecision::MotionDecision()
 	private_nh.param("MAX_YAWRATE", MAX_YAWRATE, {1.0});
 	private_nh.param("VEL_RATIO", VEL_RATIO, {0.5});
 	private_nh.param("SAFETY_DISTANCE", SAFETY_DISTANCE, {0.6});
-	private_nh.param("RECOVERY_MODE_THRESHHOLD", RECOVERY_MODE_THRESHHOLD, {60});
+	private_nh.param("RECOVERY_MODE_THRESHOLD", RECOVERY_MODE_THRESHOLD, {60});
 
 	emergency_stop_flag = false;
 	task_stop_flag = false;
@@ -116,15 +116,14 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
 		}
 		count ++;
 	}
+	std::cout << "min front laser : " << front_min_range << std::endl;
 	if(front_min_range < SAFETY_DISTANCE){
 	    if(front_min_range > SAFETY_DISTANCE*0.1){
-			std::cout << "min front laser : " << front_min_range << std::endl;
-		    safety_mode_flag = true;
+			front_laser_flag = true;
         }else{
-		    safety_mode_flag = false;
+			front_laser_flag = false;
         }
 	}
-	front_laser_flag = true;
 }
 
 void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
@@ -140,15 +139,14 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 		}
 		count ++;
 	}
+	std::cout << "min rear laser : " << rear_min_range << std::endl;
 	if(rear_min_range < SAFETY_DISTANCE){
 	    if(rear_min_range > SAFETY_DISTANCE*0.1){
-			std::cout << "min rear laser : " << rear_min_range << std::endl;
-		    safety_mode_flag = true;
+			rear_laser_flag = true;
         }else{
-		    safety_mode_flag = false;
+			rear_laser_flag = true;
         }
 	}
-	rear_laser_flag = true;
 }
 
 void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
@@ -164,9 +162,6 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 		move_flag = false;
 	}else if(joy.buttons[1]){ // circle button
 		move_flag = true;
-		if(task_stop_flag){
-			task_stop_flag = false;
-		}
 	}
 	joy_vel.linear.x = joy.axes[1]*MAX_SPEED;
 	joy_vel.angular.z = joy.axes[0]*MAX_YAWRATE;
@@ -207,7 +202,8 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 {
 	std_msgs::Bool flag = *msg;
 	if(flag.data){
-		task_stop_flag = true;
+		std::cout << "========= task stop =========" << std::endl;
+		move_flag = false;
 	}
 }
 
@@ -244,21 +240,20 @@ void MotionDecision::process()
 			if(auto_flag){
 				std::cout << "auto";
 				vel = cmd_vel;
+				if(front_laser_flag || rear_laser_flag){
+					safety_mode_flag = true;
+				}
 				if(safety_mode_flag){
 			        std::cout << ")" << std::endl;
 			        std::cout << "=== safety mode ===" << std::endl;
-					if(stop_count > RECOVERY_MODE_THRESHHOLD){
-						recovery_mode(vel);
-						stop_count = 0;
-					}else{
+					if(stop_count < RECOVERY_MODE_THRESHOLD){
 						vel.linear.x = 0.0;
 						vel.angular.z = 0.0;
 						stop_count ++;
+					}else{
+						recovery_mode(vel);
+						stop_count = 0;
 					}
-				}else if(task_stop_flag){
-					std::cout << "task stop" << std::endl;
-					vel.linear.x = 0.0;
-					vel.angular.z = 0.0;
 				}else{
                     stop_count = 0;
                 }
