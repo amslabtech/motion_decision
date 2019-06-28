@@ -111,8 +111,10 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
 	int count = 0;
 	for(auto range : front_laser.ranges){
 		if(range < front_min_range){
-			front_min_range = range;
-			front_min_idx = count;
+			if(range > 0.1){
+				front_min_range = range;
+				front_min_idx = count;
+			}
 		}
 		count ++;
 	}
@@ -123,6 +125,8 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
         }else{
 			front_laser_flag = false;
         }
+	}else{
+		front_laser_flag = false;
 	}
 }
 
@@ -134,8 +138,10 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 	int count = 0;
 	for(auto range : rear_laser.ranges){
 		if(range < rear_min_range){
-			rear_min_range = range;
-			rear_min_idx = count;
+			if(range > 0.1){
+				rear_min_range = range;
+				rear_min_idx = count;
+			}
 		}
 		count ++;
 	}
@@ -215,7 +221,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
 			cmd_vel.linear.x = -0.2;
 			cmd_vel.angular.z = 0.0;
 		}else{
-			if(front_min_idx < front_laser.ranges.size()*0.5){
+			if(front_min_idx > front_laser.ranges.size()*0.5){
 				cmd_vel.linear.x = 0.0;
 				cmd_vel.angular.z = 0.2;
 			}else{
@@ -226,6 +232,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
 	}
 	if(front_min_range > SAFETY_DISTANCE*1.2){
 		safety_mode_flag = false;
+		stop_count = 0;
 	}
 }
 
@@ -240,19 +247,19 @@ void MotionDecision::process()
 			if(auto_flag){
 				std::cout << "auto";
 				vel = cmd_vel;
-				if(front_laser_flag || rear_laser_flag){
+				if(front_laser_flag){
 					safety_mode_flag = true;
 				}
 				if(safety_mode_flag){
 			        std::cout << ")" << std::endl;
 			        std::cout << "=== safety mode ===" << std::endl;
+					std::cout << "stop_count" << stop_count<< std::endl;
 					if(stop_count < RECOVERY_MODE_THRESHOLD){
 						vel.linear.x = 0.0;
 						vel.angular.z = 0.0;
 						stop_count ++;
 					}else{
 						recovery_mode(vel);
-						stop_count = 0;
 					}
 				}else{
                     stop_count = 0;
