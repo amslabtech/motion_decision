@@ -117,7 +117,8 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
 		count ++;
 	}
 	if(front_min_range < SAFETY_DISTANCE){
-	    if(front_min_range > SAFETY_DISTANCE*0.5){
+	    if(front_min_range > SAFETY_DISTANCE*0.1){
+			std::cout << "min front laser : " << front_min_range << std::endl;
 		    safety_mode_flag = true;
         }else{
 		    safety_mode_flag = false;
@@ -140,7 +141,8 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 		count ++;
 	}
 	if(rear_min_range < SAFETY_DISTANCE){
-	    if(rear_min_range > SAFETY_DISTANCE*0.5){
+	    if(rear_min_range > SAFETY_DISTANCE*0.1){
+			std::cout << "min rear laser : " << rear_min_range << std::endl;
 		    safety_mode_flag = true;
         }else{
 		    safety_mode_flag = false;
@@ -162,6 +164,9 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 		move_flag = false;
 	}else if(joy.buttons[1]){ // circle button
 		move_flag = true;
+		if(task_stop_flag){
+			task_stop_flag = false;
+		}
 	}
 	joy_vel.linear.x = joy.axes[1]*MAX_SPEED;
 	joy_vel.angular.z = joy.axes[0]*MAX_YAWRATE;
@@ -200,7 +205,10 @@ void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg
 
 void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 {
-	task_stop_flag = msg->data;
+	std_msgs::Bool flag = *msg;
+	if(flag.data){
+		task_stop_flag = true;
+	}
 }
 
 void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
@@ -247,6 +255,10 @@ void MotionDecision::process()
 						vel.angular.z = 0.0;
 						stop_count ++;
 					}
+				}else if(task_stop_flag){
+					std::cout << "task stop" << std::endl;
+					vel.linear.x = 0.0;
+					vel.angular.z = 0.0;
 				}else{
                     stop_count = 0;
                 }
@@ -263,11 +275,6 @@ void MotionDecision::process()
 			std::cout << vel << std::endl;
 		}else{
 			std::cout << "stop : (" << (auto_flag ? "auto" : "manual") << ")"<< std::endl;
-			vel.linear.x = 0.0;
-			vel.angular.z = 0.0;
-		}
-		if(task_stop_flag){
-			std::cout << "task stop" << std::endl;
 			vel.linear.x = 0.0;
 			vel.angular.z = 0.0;
 		}
