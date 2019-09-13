@@ -57,6 +57,7 @@ class MotionDecision{
 		double SAFETY_DISTANCE;
 		int RECOVERY_MODE_THRESHOLD;
 		int stop_count;
+		int stuck_count;
 		int front_min_idx;
 		int rear_min_idx;
 };
@@ -93,6 +94,7 @@ MotionDecision::MotionDecision()
 	rear_laser_flag = false;
 	intersection_flag = false;
 	stop_count = 0;
+	stuck_count = 0;
 
 	cmd_vel.linear.x = 0.0;
 	cmd_vel.angular.z = 0.0;
@@ -237,6 +239,14 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
 				cmd_vel.angular.z = -0.2;
 			}
 		}
+	}else{
+		if(front_min_idx > front_laser.ranges.size()*0.5){
+			cmd_vel.linear.x = 0.0;
+			cmd_vel.angular.z = 0.2;
+		}else{
+			cmd_vel.linear.x = 0.0;
+			cmd_vel.angular.z = -0.2;
+		}
 	}
 	if(front_min_range > SAFETY_DISTANCE*1.2){
 		safety_mode_flag = false;
@@ -255,6 +265,18 @@ void MotionDecision::process()
 			if(auto_flag){
 				std::cout << "auto";
 				vel = cmd_vel;
+				if(vel.linear.x == 0.0 && vel.angular.z==0.0){
+					std::cout << ")" << std::endl;
+					std::cout << "=== stuck recovery mode ===" << std::endl;
+					std::cout << "stuck_count" << stuck_count<< std::endl;
+					if(stuck_count < RECOVERY_MODE_THRESHOLD){
+						stuck_count ++;
+					}else{
+						recovery_mode(vel);
+					}
+				}else{
+					stuck_count = 0;
+				}
 				if(front_laser_flag){
 					safety_mode_flag = true;
 				}
