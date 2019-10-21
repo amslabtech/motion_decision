@@ -1,18 +1,21 @@
+<?xml version="1.0"?>
 <launch>
-	<arg name="hz" default="20"/>
-	<arg name="max_speed" default="1.0"/>
-	<arg name="max_yawrate" default="1.0"/>
-	<arg name="vel_ratio" default="0.5"/>
-	<arg name="safety_distance" default="0.6"/>
-	<arg name="recovery_mode_threshold" default="60"/>
+    <arg name="hz" default="20"/>
+    <arg name="max_speed" default="1.0"/>
+    <arg name="max_yawrate" default="1.0"/>
+    <arg name="vel_ratio" default="0.5"/>
+    <arg name="safety_distance" default="0.6"/>
+    <arg name="goal_distance" default="0.6"/>
+    <arg name="recovery_mode_threshold" default="60"/>
 
     <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="local_planner">
-		<param name="HZ" value="$(arg hz)" type="int"/>
-		<param name="MAX_SPEED" value="$(arg max_speed)" type="double"/>
-		<param name="MAX_YAWRATE" value="$(arg max_yawrate)" type="double"/>
-		<param name="VEL_RATIO" value="$(arg vel_ratio)" type="double"/>
-		<param name="SAFETY_DISTANCE" value="$(arg safety_distance)" type="double"/>
-		<param name="RECOVERY_MODE_THRESHHOLD" value="$(arg recovery_mode_threshold)" type="double"/>
-		<remap from="/cmd_vel" to="/t_frog/cmd_vel"/>
-	</node>
+        <param name="HZ" value="$(arg hz)" type="int"/>
+        <param name="MAX_SPEED" value="$(arg max_speed)" type="double"/>
+        <param name="MAX_YAWRATE" value="$(arg max_yawrate)" type="double"/>
+        <param name="VEL_RATIO" value="$(arg vel_ratio)" type="double"/>
+        <param name="SAFETY_DISTANCE" value="$(arg safety_distance)" type="double"/>
+        <param name="GOAL_DISTANCE" value="$(arg goal_distance)" type="double"/>
+        <param name="RECOVERY_MODE_THRESHHOLD" value="$(arg recovery_mode_threshold)" type="double"/>
+        <remap from="/cmd_vel" to="/t_frog/cmd_vel"/>
+    </node>
 </launch>
