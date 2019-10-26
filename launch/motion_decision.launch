@@ -7,6 +7,8 @@
     <arg name="safety_distance" default="0.6"/>
     <arg name="goal_distance" default="0.6"/>
     <arg name="recovery_mode_threshold" default="60"/>
+    <arg name="stop_sound_path" default="$(find motion_decision)/sounds/warning1.wav"/>
+    <arg name="recovery_sound_path" default="$(find motion_decision)/sounds/warning2.wav"/>
 
     <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="local_planner">
         <param name="HZ" value="$(arg hz)" type="int"/>
@@ -16,6 +18,8 @@
         <param name="SAFETY_DISTANCE" value="$(arg safety_distance)" type="double"/>
         <param name="GOAL_DISTANCE" value="$(arg goal_distance)" type="double"/>
         <param name="RECOVERY_MODE_THRESHHOLD" value="$(arg recovery_mode_threshold)" type="double"/>
+        <param name="STOP_SOUND_PATH" value="$(arg stop_sound_path)"/>
+        <param name="RECOVERY_SOUND_PATH" value="$(arg recovery_sound_path)"/>
         <remap from="/cmd_vel" to="/t_frog/cmd_vel"/>
     </node>
 </launch>

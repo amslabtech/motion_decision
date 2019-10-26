@@ -69,6 +69,9 @@ class MotionDecision{
         int front_min_idx;
         int rear_min_idx;
         double target_yaw;
+
+        std::string STOP_SOUND_PATH;
+        std::string RECOVERY_SOUND_PATH;
 };
 
 MotionDecision::MotionDecision()
@@ -94,6 +97,8 @@ MotionDecision::MotionDecision()
     private_nh.param("SAFETY_DISTANCE", SAFETY_DISTANCE, {0.6});
     private_nh.param("GOAL_DISTANCE", GOAL_DISTANCE, {0.6});
     private_nh.param("RECOVERY_MODE_THRESHOLD", RECOVERY_MODE_THRESHOLD, {60});
+    private_nh.param("STOP_SOUND_PATH", STOP_SOUND_PATH, {""});
+    private_nh.param("RECOVERY_SOUND_PATH", RECOVERY_SOUND_PATH, {""});
 
     emergency_stop_flag = false;
     task_stop_flag = false;
@@ -316,8 +321,13 @@ void MotionDecision::process()
                     }else{
                         stuck_count = 0;
                     }
-                    if((vel.linear.x > 0.0 && front_laser_flag) || (vel.linear.x<0.0 && rear_laser_flag)){
-                        safety_mode_flag = true;
+                    if(!safety_mode_flag){
+                        if((vel.linear.x > 0.0 && front_laser_flag) || (vel.linear.x<0.0 && rear_laser_flag)){
+                            safety_mode_flag = true;
+                            if(STOP_SOUND_PATH != ""){ std::string sound_command = "aplay " + STOP_SOUND_PATH + " &";
+                                system(sound_command.c_str());
+                            }
+                        }
                     }
                     if(safety_mode_flag){
                         std::cout << ")" << std::endl;
@@ -327,6 +337,12 @@ void MotionDecision::process()
                             vel.linear.x = 0.0;
                             vel.angular.z = 0.0;
                             stop_count ++;
+                            if(stop_count == RECOVERY_MODE_THRESHOLD){
+                                if(RECOVERY_SOUND_PATH != ""){
+                                    std::string sound_command = "aplay " + RECOVERY_SOUND_PATH + " &";
+                                    system(sound_command.c_str());
+                                }
+                            }
                         }else{
                             recovery_mode(vel);
                         }
