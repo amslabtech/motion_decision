@@ -63,12 +63,18 @@ class MotionDecision{
         double VEL_RATIO;
         double SAFETY_DISTANCE;
         double GOAL_DISTANCE;
+        double COLLISION_DISTANCE;
+        double DT;
+        double PREDICT_TIME;
         int RECOVERY_MODE_THRESHOLD;
+        int TRIGGER_COUNT;
         int stop_count;
         int stuck_count;
         int front_min_idx;
         int rear_min_idx;
         double target_yaw;
+        int front_trigger_count = 0;
+        int rear_trigger_count = 0;
 
         std::string STOP_SOUND_PATH;
         std::string RECOVERY_SOUND_PATH;
@@ -96,7 +102,11 @@ MotionDecision::MotionDecision()
     private_nh.param("VEL_RATIO", VEL_RATIO, {0.5});
     private_nh.param("SAFETY_DISTANCE", SAFETY_DISTANCE, {0.6});
     private_nh.param("GOAL_DISTANCE", GOAL_DISTANCE, {0.6});
+    private_nh.param("COLLISION_DISTANCE", COLLISION_DISTANCE, {0.4});
+    private_nh.param("PREDICT_TIME", PREDICT_TIME, {0.5});
+    private_nh.param("DT", DT, {0.1});
     private_nh.param("RECOVERY_MODE_THRESHOLD", RECOVERY_MODE_THRESHOLD, {60});
+    private_nh.param("TRIGGER_COUNT", TRIGGER_COUNT, {2});
     private_nh.param("STOP_SOUND_PATH", STOP_SOUND_PATH, {""});
     private_nh.param("RECOVERY_SOUND_PATH", RECOVERY_SOUND_PATH, {""});
 
@@ -115,6 +125,10 @@ MotionDecision::MotionDecision()
     stop_count = 0;
     stuck_count = 0;
     target_yaw = 0.0;
+    front_min_range = -1.0;
+    rear_min_range = -1.0;
+    front_trigger_count = 0;
+    rear_trigger_count = 0;
 
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
@@ -154,16 +168,39 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
                 front_min_idx = count;
             }
         }
-        count ++;
+        count++;
     }
-    std::cout << "min front laser : " << front_min_range << std::endl;
-    if(front_min_range < SAFETY_DISTANCE){
-        if(front_min_range > SAFETY_DISTANCE*0.1){
-            front_laser_flag = true;
-        }else{
-            front_laser_flag = false;
+    double ttc = PREDICT_TIME;
+    int i = 0;
+    for(auto range : front_laser.ranges){
+        double x=0;
+        double y=0;
+        double yaw=0;
+        double angle = (2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
+        double ox = range * cos(angle);
+        double oy = range * sin(angle);
+        for(double t=0; t<PREDICT_TIME; t+=DT){
+            yaw+=cmd_vel.angular.z*DT;
+            x+=cmd_vel.linear.x*cos(yaw)*DT;
+            y+=cmd_vel.linear.x*sin(yaw)*DT;
+            double r = sqrt((x-ox)*(x-ox)+(y-oy)*(y-oy));
+            if(r<COLLISION_DISTANCE){
+                if(t<ttc){
+                    ttc = t;
+                }
+            }
         }
+        i++;
+    }
+    std::cout << "ttc[s] :" << ttc << std::endl;
+    //if(front_min_range < SAFETY_DISTANCE){
+    if(ttc < PREDICT_TIME){
+        if(front_trigger_count>TRIGGER_COUNT){
+            front_laser_flag = true;
+        }
+        front_trigger_count++;
     }else{
+        front_trigger_count = 0;
         front_laser_flag = false;
     }
     front_laser_received = true;
@@ -182,15 +219,16 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
                 rear_min_idx = count;
             }
         }
-        count ++;
+        count++;
     }
-    std::cout << "min rear laser : " << rear_min_range << std::endl;
     if(rear_min_range < SAFETY_DISTANCE){
-        if(rear_min_range > SAFETY_DISTANCE*0.1){
-            rear_laser_flag = true;
-        }else{
+        if(rear_trigger_count>TRIGGER_COUNT){
             rear_laser_flag = true;
         }
+        rear_trigger_count++;
+    }else{
+        rear_trigger_count = 0;
+        rear_laser_flag = true;
     }
     rear_laser_received = true;
 }
@@ -298,6 +336,8 @@ void MotionDecision::process()
     while(ros::ok()){
         geometry_msgs::Twist vel;
         std::cout << "==== motion decision ====" << std::endl;
+        std::cout << "min front laser : " << front_min_range  << "(" << front_trigger_count << ")" << std::endl;
+        std::cout << "min rear laser  : " << rear_min_range  << "(" << rear_trigger_count << ")" << std::endl;
         if(move_flag){
             std::cout << "move : (";
             if(auto_flag){
