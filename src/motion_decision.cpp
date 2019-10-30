@@ -37,6 +37,7 @@ class MotionDecision{
         ros::Publisher intersection_flag_pub;
 
         void recovery_mode(geometry_msgs::Twist& cmd_vel);
+        float CalcTTC(geometry_msgs::Twist vel);
 
         bool emergency_stop_flag;
         bool task_stop_flag;
@@ -45,8 +46,7 @@ class MotionDecision{
         bool joy_flag;
         bool intersection_flag;
         bool safety_mode_flag;
-        bool front_laser_flag;
-        bool rear_laser_flag;
+        bool laser_flag;
         bool target_arrival;
         bool front_laser_received;
         bool rear_laser_received;
@@ -66,15 +66,15 @@ class MotionDecision{
         double COLLISION_DISTANCE;
         double DT;
         double PREDICT_TIME;
+        double SAFETY_COLLISION_TIME;
         int RECOVERY_MODE_THRESHOLD;
-        int TRIGGER_COUNT;
+        int TRIGGER_COUNT_THRESHOLD;
         int stop_count;
         int stuck_count;
+        int trigger_count;
         int front_min_idx;
         int rear_min_idx;
         double target_yaw;
-        int front_trigger_count = 0;
-        int rear_trigger_count = 0;
 
         std::string STOP_SOUND_PATH;
         std::string RECOVERY_SOUND_PATH;
@@ -104,9 +104,10 @@ MotionDecision::MotionDecision()
     private_nh.param("GOAL_DISTANCE", GOAL_DISTANCE, {0.6});
     private_nh.param("COLLISION_DISTANCE", COLLISION_DISTANCE, {0.4});
     private_nh.param("PREDICT_TIME", PREDICT_TIME, {0.5});
+    private_nh.param("SAFETY_COLLISION_TIME", SAFETY_COLLISION_TIME, {0.5});
     private_nh.param("DT", DT, {0.1});
     private_nh.param("RECOVERY_MODE_THRESHOLD", RECOVERY_MODE_THRESHOLD, {60});
-    private_nh.param("TRIGGER_COUNT", TRIGGER_COUNT, {2});
+    private_nh.param("TRIGGER_COUNT_THRESHOLD", TRIGGER_COUNT_THRESHOLD, {2});
     private_nh.param("STOP_SOUND_PATH", STOP_SOUND_PATH, {""});
     private_nh.param("RECOVERY_SOUND_PATH", RECOVERY_SOUND_PATH, {""});
 
@@ -116,8 +117,7 @@ MotionDecision::MotionDecision()
     auto_flag = false;
     move_flag = false;
     joy_flag = false;
-    front_laser_flag = false;
-    rear_laser_flag = false;
+    laser_flag = false;
     intersection_flag = false;
     target_arrival = false;
     front_laser_received = false;
@@ -127,8 +127,7 @@ MotionDecision::MotionDecision()
     target_yaw = 0.0;
     front_min_range = -1.0;
     rear_min_range = -1.0;
-    front_trigger_count = 0;
-    rear_trigger_count = 0;
+    trigger_count = 0;
 
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
@@ -170,39 +169,6 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
         }
         count++;
     }
-    double ttc = PREDICT_TIME;
-    int i = 0;
-    for(auto range : front_laser.ranges){
-        double x=0;
-        double y=0;
-        double yaw=0;
-        double angle = (2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
-        double ox = range * cos(angle);
-        double oy = range * sin(angle);
-        for(double t=0; t<PREDICT_TIME; t+=DT){
-            yaw+=cmd_vel.angular.z*DT;
-            x+=cmd_vel.linear.x*cos(yaw)*DT;
-            y+=cmd_vel.linear.x*sin(yaw)*DT;
-            double r = sqrt((x-ox)*(x-ox)+(y-oy)*(y-oy));
-            if(r<COLLISION_DISTANCE){
-                if(t<ttc){
-                    ttc = t;
-                }
-            }
-        }
-        i++;
-    }
-    std::cout << "ttc[s] :" << ttc << std::endl;
-    //if(front_min_range < SAFETY_DISTANCE){
-    if(ttc < PREDICT_TIME){
-        if(front_trigger_count>TRIGGER_COUNT){
-            front_laser_flag = true;
-        }
-        front_trigger_count++;
-    }else{
-        front_trigger_count = 0;
-        front_laser_flag = false;
-    }
     front_laser_received = true;
 }
 
@@ -221,16 +187,42 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
         }
         count++;
     }
-    if(rear_min_range < SAFETY_DISTANCE){
-        if(rear_trigger_count>TRIGGER_COUNT){
-            rear_laser_flag = true;
-        }
-        rear_trigger_count++;
-    }else{
-        rear_trigger_count = 0;
-        rear_laser_flag = true;
-    }
     rear_laser_received = true;
+}
+
+float MotionDecision::CalcTTC(geometry_msgs::Twist vel)
+{
+    sensor_msgs::LaserScan laser;
+    if(vel.linear.x > 0.0){
+        laser = front_laser;
+    }else if(vel.linear.x < 0.0){
+        laser = rear_laser;
+    }
+
+    double ttc = PREDICT_TIME;
+    int i = 0;
+    for(auto range : laser.ranges){
+        double x=0;
+        double y=0;
+        double yaw=0;
+        double angle = (2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
+        double ox = range * cos(angle);
+        double oy = range * sin(angle);
+        for(double t=0; t<PREDICT_TIME; t+=DT){
+            yaw+=vel.angular.z*DT;
+            x+=vel.linear.x*cos(yaw)*DT;
+            y+=vel.linear.x*sin(yaw)*DT;
+            double r = sqrt((x-ox)*(x-ox)+(y-oy)*(y-oy));
+            if(r<COLLISION_DISTANCE){
+                if(t<ttc){
+                    ttc = t;
+                }
+            }
+        }
+        i++;
+    }
+    std::cout << "ttc[s] :" << ttc << std::endl;
+    return ttc;
 }
 
 void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
@@ -336,8 +328,9 @@ void MotionDecision::process()
     while(ros::ok()){
         geometry_msgs::Twist vel;
         std::cout << "==== motion decision ====" << std::endl;
-        std::cout << "min front laser : " << front_min_range  << "(" << front_trigger_count << ")" << std::endl;
-        std::cout << "min rear laser  : " << rear_min_range  << "(" << rear_trigger_count << ")" << std::endl;
+        std::cout << "min front laser : " << front_min_range << std::endl;
+        std::cout << "min rear laser  : " << rear_min_range  << std::endl;
+        std::cout << "trigger count   : " << trigger_count  << std::endl;
         if(move_flag){
             std::cout << "move : (";
             if(auto_flag){
@@ -355,16 +348,33 @@ void MotionDecision::process()
                         std::cout << "stuck_count" << stuck_count<< std::endl;
                         if(stuck_count < RECOVERY_MODE_THRESHOLD){
                             stuck_count ++;
+                            if(stuck_count == RECOVERY_MODE_THRESHOLD){
+                                if(RECOVERY_SOUND_PATH != ""){
+                                    std::string sound_command = "aplay " + RECOVERY_SOUND_PATH + " &";
+                                    system(sound_command.c_str());
+                                }
+                            }
                         }else{
                             recovery_mode(vel);
                         }
                     }else{
                         stuck_count = 0;
                     }
+                    double ttc = CalcTTC(vel);
                     if(!safety_mode_flag){
-                        if((vel.linear.x > 0.0 && front_laser_flag) || (vel.linear.x<0.0 && rear_laser_flag)){
+                        if(ttc < SAFETY_COLLISION_TIME){
+                            if(trigger_count>TRIGGER_COUNT_THRESHOLD){
+                                laser_flag = true;
+                            }
+                            trigger_count++;
+                        }else{
+                            trigger_count = 0;
+                            laser_flag = false;
+                        }
+                        if(laser_flag){
                             safety_mode_flag = true;
-                            if(STOP_SOUND_PATH != ""){ std::string sound_command = "aplay " + STOP_SOUND_PATH + " &";
+                            if(STOP_SOUND_PATH != ""){
+                                std::string sound_command = "aplay " + STOP_SOUND_PATH + " &";
                                 system(sound_command.c_str());
                             }
                         }

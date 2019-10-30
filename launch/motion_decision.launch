@@ -10,7 +10,7 @@
     <arg name="dt" default="0.1"/>
     <arg name="predict_time" default="0.5"/>
     <arg name="recovery_mode_threshold" default="60"/>
-    <arg name="trigger_count" default="2"/>
+    <arg name="trigger_count_threshold" default="2"/>
     <arg name="stop_sound_path" default="$(find motion_decision)/sounds/warning1.wav"/>
     <arg name="recovery_sound_path" default="$(find motion_decision)/sounds/warning2.wav"/>
 
@@ -24,8 +24,8 @@
         <param name="COLLISION_DISTANCE" value="$(arg collision_distance)" type="double"/>
         <param name="DT" value="$(arg dt)" type="double"/>
         <param name="PREDICT_TIME" value="$(arg predict_time)" type="double"/>
-        <param name="RECOVERY_MODE_THRESHHOLD" value="$(arg recovery_mode_threshold)" type="int"/>
-        <param name="TRIGGER_COUNT" value="$(arg trigger_count)" type="int"/>
+        <param name="RECOVERY_MODE_THRESHOLD" value="$(arg recovery_mode_threshold)" type="int"/>
+        <param name="TRIGGER_COUNT_THRESHOLD" value="$(arg trigger_count_threshold)" type="int"/>
         <param name="STOP_SOUND_PATH" value="$(arg stop_sound_path)"/>
         <param name="RECOVERY_SOUND_PATH" value="$(arg recovery_sound_path)"/>
         <remap from="/cmd_vel" to="/t_frog/cmd_vel"/>
