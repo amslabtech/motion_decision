@@ -36,8 +36,8 @@ class MotionDecision{
         ros::Publisher vel_pub;
         ros::Publisher intersection_flag_pub;
 
-        void recovery_mode(geometry_msgs::Twist& cmd_vel);
-        float CalcTTC(geometry_msgs::Twist vel);
+        void recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back);
+        float CalcTTC(geometry_msgs::Twist vel, bool go_back);
 
         bool emergency_stop_flag;
         bool task_stop_flag;
@@ -103,7 +103,7 @@ MotionDecision::MotionDecision()
     private_nh.param("SAFETY_DISTANCE", SAFETY_DISTANCE, {0.6});
     private_nh.param("GOAL_DISTANCE", GOAL_DISTANCE, {0.6});
     private_nh.param("COLLISION_DISTANCE", COLLISION_DISTANCE, {0.4});
-    private_nh.param("PREDICT_TIME", PREDICT_TIME, {0.5});
+    private_nh.param("PREDICT_TIME", PREDICT_TIME, {1.0});
     private_nh.param("SAFETY_COLLISION_TIME", SAFETY_COLLISION_TIME, {0.5});
     private_nh.param("DT", DT, {0.1});
     private_nh.param("RECOVERY_MODE_THRESHOLD", RECOVERY_MODE_THRESHOLD, {60});
@@ -190,12 +190,12 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
     rear_laser_received = true;
 }
 
-float MotionDecision::CalcTTC(geometry_msgs::Twist vel)
+float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
 {
     sensor_msgs::LaserScan laser;
-    if(vel.linear.x > 0.0){
+    if(!go_back){
         laser = front_laser;
-    }else if(vel.linear.x < 0.0){
+    }else{
         laser = rear_laser;
     }
 
@@ -208,6 +208,11 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel)
         double angle = (2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
         double ox = range * cos(angle);
         double oy = range * sin(angle);
+        if(vel.linear.x < 0.0){
+            ox *= -1;
+            oy *= -1;
+        }
+
         for(double t=0; t<PREDICT_TIME; t+=DT){
             yaw+=vel.angular.z*DT;
             x+=vel.linear.x*cos(yaw)*DT;
@@ -283,20 +288,30 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
     }
 }
 
-void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
+void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 {
     std::cout << "=== recovery mode ===" << std::endl;
-    if(front_min_range < SAFETY_DISTANCE){
-        if(rear_min_range > SAFETY_DISTANCE){
-            if(front_min_idx > front_laser.ranges.size()*2.0/3.0){
-                cmd_vel.linear.x = -0.2;
-                cmd_vel.angular.z = 0.15;
-            }else if((front_laser.ranges.size()*1.0/3.0 < front_min_idx) && (front_min_idx < front_laser.ranges.size()*2.0/3.0)){
-                cmd_vel.linear.x = -0.2;
-                cmd_vel.angular.z = 0.0;
+    if(!go_back){
+        if(front_min_range < SAFETY_DISTANCE){
+            if(rear_min_range > SAFETY_DISTANCE){
+                if(front_min_idx > front_laser.ranges.size()*2.0/3.0){
+                    cmd_vel.linear.x = -0.2;
+                    cmd_vel.angular.z = 0.15;
+                }else if((front_laser.ranges.size()*1.0/3.0 < front_min_idx) && (front_min_idx < front_laser.ranges.size()*2.0/3.0)){
+                    cmd_vel.linear.x = -0.2;
+                    cmd_vel.angular.z = 0.0;
+                }else{
+                    cmd_vel.linear.x = -0.2;
+                    cmd_vel.angular.z = -0.15;
+                }
             }else{
-                cmd_vel.linear.x = -0.2;
-                cmd_vel.angular.z = -0.15;
+                if(front_min_idx > front_laser.ranges.size()*0.5){
+                    cmd_vel.linear.x = 0.0;
+                    cmd_vel.angular.z = 0.2;
+                }else{
+                    cmd_vel.linear.x = 0.0;
+                    cmd_vel.angular.z = -0.2;
+                }
             }
         }else{
             if(front_min_idx > front_laser.ranges.size()*0.5){
@@ -308,17 +323,36 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel)
             }
         }
     }else{
-        if(front_min_idx > front_laser.ranges.size()*0.5){
-            cmd_vel.linear.x = 0.0;
-            cmd_vel.angular.z = 0.2;
+        if(rear_min_range < SAFETY_DISTANCE){
+            if(front_min_range > SAFETY_DISTANCE){
+                if(rear_min_idx > rear_laser.ranges.size()*2.0/3.0){
+                    cmd_vel.linear.x = 0.2;
+                    cmd_vel.angular.z = -0.15;
+                }else if((rear_laser.ranges.size()*1.0/3.0 < rear_min_idx) && (rear_min_idx < rear_laser.ranges.size()*2.0/3.0)){
+                    cmd_vel.linear.x = 0.2;
+                    cmd_vel.angular.z = 0.0;
+                }else{
+                    cmd_vel.linear.x = 0.2;
+                    cmd_vel.angular.z = 0.15;
+                }
+            }else{
+                if(rear_min_idx > rear_laser.ranges.size()*0.5){
+                    cmd_vel.linear.x = 0.0;
+                    cmd_vel.angular.z = -0.2;
+                }else{
+                    cmd_vel.linear.x = 0.0;
+                    cmd_vel.angular.z = 0.2;
+                }
+            }
         }else{
-            cmd_vel.linear.x = 0.0;
-            cmd_vel.angular.z = -0.2;
+            if(rear_min_idx > rear_laser.ranges.size()*0.5){
+                cmd_vel.linear.x = 0.0;
+                cmd_vel.angular.z = -0.2;
+            }else{
+                cmd_vel.linear.x = 0.0;
+                cmd_vel.angular.z = 0.2;
+            }
         }
-    }
-    if(front_min_range > SAFETY_DISTANCE*1.2){
-        safety_mode_flag = false;
-        stop_count = 0;
     }
 }
 
@@ -337,6 +371,10 @@ void MotionDecision::process()
                 std::cout << "auto";
                 if(front_laser_received && rear_laser_received){
                     vel = cmd_vel;
+                    bool go_back=false;
+                    if(cmd_vel.linear.x <= 0.0){
+                        go_back=true;
+                    }
                     if(target_arrival){
                         std::cout << "=== target arrival ===" << std::endl;
                         vel.linear.x = 0.0;
@@ -355,12 +393,12 @@ void MotionDecision::process()
                                 }
                             }
                         }else{
-                            recovery_mode(vel);
+                            recovery_mode(vel, go_back);
                         }
                     }else{
                         stuck_count = 0;
                     }
-                    double ttc = CalcTTC(vel);
+                    double ttc = CalcTTC(vel, go_back);
                     if(!safety_mode_flag){
                         if(ttc < SAFETY_COLLISION_TIME){
                             if(trigger_count>TRIGGER_COUNT_THRESHOLD){
@@ -394,7 +432,10 @@ void MotionDecision::process()
                                 }
                             }
                         }else{
-                            recovery_mode(vel);
+                            recovery_mode(vel, go_back);
+                            if(ttc > SAFETY_COLLISION_TIME*1.2){
+                                safety_mode_flag = false;
+                            }
                         }
                     }else{
                         stop_count = 0;
