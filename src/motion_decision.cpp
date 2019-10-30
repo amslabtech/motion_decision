@@ -1,4 +1,4 @@
-#include "ros/ros.h"
+#include <ros/ros.h>
 #include <tf/tf.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
@@ -292,26 +292,16 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 {
     std::cout << "=== recovery mode ===" << std::endl;
     if(!go_back){
-        if(front_min_range < SAFETY_DISTANCE){
-            if(rear_min_range > SAFETY_DISTANCE){
-                if(front_min_idx > front_laser.ranges.size()*2.0/3.0){
-                    cmd_vel.linear.x = -0.2;
-                    cmd_vel.angular.z = 0.15;
-                }else if((front_laser.ranges.size()*1.0/3.0 < front_min_idx) && (front_min_idx < front_laser.ranges.size()*2.0/3.0)){
-                    cmd_vel.linear.x = -0.2;
-                    cmd_vel.angular.z = 0.0;
-                }else{
-                    cmd_vel.linear.x = -0.2;
-                    cmd_vel.angular.z = -0.15;
-                }
+        if(rear_min_range > SAFETY_DISTANCE){
+            if(front_min_idx > front_laser.ranges.size()*2.0/3.0){
+                cmd_vel.linear.x = -0.2;
+                cmd_vel.angular.z = 0.15;
+            }else if((front_laser.ranges.size()*1.0/3.0 < front_min_idx) && (front_min_idx < front_laser.ranges.size()*2.0/3.0)){
+                cmd_vel.linear.x = -0.2;
+                cmd_vel.angular.z = 0.0;
             }else{
-                if(front_min_idx > front_laser.ranges.size()*0.5){
-                    cmd_vel.linear.x = 0.0;
-                    cmd_vel.angular.z = 0.2;
-                }else{
-                    cmd_vel.linear.x = 0.0;
-                    cmd_vel.angular.z = -0.2;
-                }
+                cmd_vel.linear.x = -0.2;
+                cmd_vel.angular.z = -0.15;
             }
         }else{
             if(front_min_idx > front_laser.ranges.size()*0.5){
@@ -323,26 +313,16 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
             }
         }
     }else{
-        if(rear_min_range < SAFETY_DISTANCE){
-            if(front_min_range > SAFETY_DISTANCE){
-                if(rear_min_idx > rear_laser.ranges.size()*2.0/3.0){
-                    cmd_vel.linear.x = 0.2;
-                    cmd_vel.angular.z = -0.15;
-                }else if((rear_laser.ranges.size()*1.0/3.0 < rear_min_idx) && (rear_min_idx < rear_laser.ranges.size()*2.0/3.0)){
-                    cmd_vel.linear.x = 0.2;
-                    cmd_vel.angular.z = 0.0;
-                }else{
-                    cmd_vel.linear.x = 0.2;
-                    cmd_vel.angular.z = 0.15;
-                }
+        if(front_min_range > SAFETY_DISTANCE){
+            if(rear_min_idx > rear_laser.ranges.size()*2.0/3.0){
+                cmd_vel.linear.x = 0.2;
+                cmd_vel.angular.z = -0.15;
+            }else if((rear_laser.ranges.size()*1.0/3.0 < rear_min_idx) && (rear_min_idx < rear_laser.ranges.size()*2.0/3.0)){
+                cmd_vel.linear.x = 0.2;
+                cmd_vel.angular.z = 0.0;
             }else{
-                if(rear_min_idx > rear_laser.ranges.size()*0.5){
-                    cmd_vel.linear.x = 0.0;
-                    cmd_vel.angular.z = -0.2;
-                }else{
-                    cmd_vel.linear.x = 0.0;
-                    cmd_vel.angular.z = 0.2;
-                }
+                cmd_vel.linear.x = 0.2;
+                cmd_vel.angular.z = 0.15;
             }
         }else{
             if(rear_min_idx > rear_laser.ranges.size()*0.5){
@@ -375,6 +355,7 @@ void MotionDecision::process()
                     if(cmd_vel.linear.x <= 0.0){
                         go_back=true;
                     }
+                    double ttc = CalcTTC(vel, go_back);
                     if(target_arrival){
                         std::cout << "=== target arrival ===" << std::endl;
                         vel.linear.x = 0.0;
@@ -398,7 +379,6 @@ void MotionDecision::process()
                     }else{
                         stuck_count = 0;
                     }
-                    double ttc = CalcTTC(vel, go_back);
                     if(!safety_mode_flag){
                         if(ttc < SAFETY_COLLISION_TIME){
                             if(trigger_count>TRIGGER_COUNT_THRESHOLD){
