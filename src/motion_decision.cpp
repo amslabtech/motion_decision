@@ -61,7 +61,6 @@ class MotionDecision{
         double MAX_SPEED;
         double MAX_YAWRATE;
         double VEL_RATIO;
-        double SAFETY_DISTANCE;
         double GOAL_DISTANCE;
         double COLLISION_DISTANCE;
         double DT;
@@ -100,7 +99,6 @@ MotionDecision::MotionDecision()
     private_nh.param("MAX_SPEED", MAX_SPEED, {1.0});
     private_nh.param("MAX_YAWRATE", MAX_YAWRATE, {1.0});
     private_nh.param("VEL_RATIO", VEL_RATIO, {0.5});
-    private_nh.param("SAFETY_DISTANCE", SAFETY_DISTANCE, {0.6});
     private_nh.param("GOAL_DISTANCE", GOAL_DISTANCE, {0.6});
     private_nh.param("COLLISION_DISTANCE", COLLISION_DISTANCE, {0.4});
     private_nh.param("PREDICT_TIME", PREDICT_TIME, {1.0});
@@ -205,12 +203,15 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
         double x=0;
         double y=0;
         double yaw=0;
-        double angle = (2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
-        double ox = range * cos(angle);
-        double oy = range * sin(angle);
-        if(vel.linear.x < 0.0){
-            ox *= -1;
-            oy *= -1;
+        double ox,oy,angle;
+        if(!go_back){
+            angle = -(2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
+            ox = range * cos(angle);
+            oy = range * sin(angle);
+        }else{
+            angle = (2.0*i/rear_laser.ranges.size()-1.0)*(rear_laser.angle_max);
+            ox = -range * cos(angle);
+            oy = -range * sin(angle);
         }
 
         for(double t=0; t<PREDICT_TIME; t+=DT){
@@ -226,7 +227,6 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
         }
         i++;
     }
-    std::cout << "ttc[s] :" << ttc << std::endl;
     return ttc;
 }
 
@@ -291,18 +291,31 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 {
     std::cout << "=== recovery mode ===" << std::endl;
+    double max_velocity = 0.3;
+    double max_yawrate = 0.3;
+    double velocity_resolution = 0.1;
+    double yawrate_resolution = 0.1;
+    double max_v = 0.0;
+    double max_w = 0.0;
+    double max_ttc = 0.0;
     if(!go_back){
-        if(rear_min_range > SAFETY_DISTANCE){
-            if(front_min_idx > front_laser.ranges.size()*2.0/3.0){
-                cmd_vel.linear.x = -0.2;
-                cmd_vel.angular.z = 0.15;
-            }else if((front_laser.ranges.size()*1.0/3.0 < front_min_idx) && (front_min_idx < front_laser.ranges.size()*2.0/3.0)){
-                cmd_vel.linear.x = -0.2;
-                cmd_vel.angular.z = 0.0;
-            }else{
-                cmd_vel.linear.x = -0.2;
-                cmd_vel.angular.z = -0.15;
+        for(double v=-velocity_resolution; v>=-max_velocity; v-=velocity_resolution){
+            for(double w=-max_yawrate; w<=max_yawrate; w+=yawrate_resolution){
+                geometry_msgs::Twist vel;
+                vel.linear.x = v;
+                vel.angular.z = w;
+                double ttc = CalcTTC(vel, true);
+                std::cout << "(v,w,ttc)" << v << ", " << w << ", " << ttc << std::endl;
+                if(ttc > max_ttc){
+                    max_v = v;
+                    max_w = w;
+                    max_ttc = ttc;
+                }
             }
+        }
+        if(max_ttc == PREDICT_TIME){
+            cmd_vel.linear.x = max_v;
+            cmd_vel.angular.z = max_w;
         }else{
             if(front_min_idx > front_laser.ranges.size()*0.5){
                 cmd_vel.linear.x = 0.0;
@@ -313,17 +326,23 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
             }
         }
     }else{
-        if(front_min_range > SAFETY_DISTANCE){
-            if(rear_min_idx > rear_laser.ranges.size()*2.0/3.0){
-                cmd_vel.linear.x = 0.2;
-                cmd_vel.angular.z = -0.15;
-            }else if((rear_laser.ranges.size()*1.0/3.0 < rear_min_idx) && (rear_min_idx < rear_laser.ranges.size()*2.0/3.0)){
-                cmd_vel.linear.x = 0.2;
-                cmd_vel.angular.z = 0.0;
-            }else{
-                cmd_vel.linear.x = 0.2;
-                cmd_vel.angular.z = 0.15;
+        for(double v=velocity_resolution; v<=max_velocity; v+=velocity_resolution){
+            for(double w=-max_yawrate; w<=max_yawrate; w+=yawrate_resolution){
+                geometry_msgs::Twist vel;
+                vel.linear.x = v;
+                vel.angular.z = w;
+                double ttc = CalcTTC(vel, false);
+                std::cout << "(v,w,ttc)" << v << ", " << w << ", " << ttc << std::endl;
+                if(ttc > max_ttc){
+                    max_v = v;
+                    max_w = w;
+                    max_ttc = ttc;
+                }
             }
+        }
+        if(max_ttc == PREDICT_TIME){
+            cmd_vel.linear.x = max_v;
+            cmd_vel.angular.z = max_w;
         }else{
             if(rear_min_idx > rear_laser.ranges.size()*0.5){
                 cmd_vel.linear.x = 0.0;
@@ -379,16 +398,16 @@ void MotionDecision::process()
                     }else{
                         stuck_count = 0;
                     }
-                    if(!safety_mode_flag){
-                        if(ttc < SAFETY_COLLISION_TIME){
-                            if(trigger_count>TRIGGER_COUNT_THRESHOLD){
-                                laser_flag = true;
-                            }
-                            trigger_count++;
-                        }else{
-                            trigger_count = 0;
-                            laser_flag = false;
+                    if(ttc < SAFETY_COLLISION_TIME){
+                        if(trigger_count>TRIGGER_COUNT_THRESHOLD){
+                            laser_flag = true;
                         }
+                        trigger_count++;
+                    }else{
+                        trigger_count = 0;
+                        laser_flag = false;
+                    }
+                    if(!safety_mode_flag){
                         if(laser_flag){
                             safety_mode_flag = true;
                             if(STOP_SOUND_PATH != ""){
