@@ -48,6 +48,7 @@ class MotionDecision{
         bool safety_mode_flag;
         bool laser_flag;
         bool target_arrival;
+        bool local_path_received;
         bool front_laser_received;
         bool rear_laser_received;
         geometry_msgs::Twist cmd_vel;
@@ -118,6 +119,7 @@ MotionDecision::MotionDecision()
     laser_flag = false;
     intersection_flag = false;
     target_arrival = false;
+    local_path_received = false;
     front_laser_received = false;
     rear_laser_received = false;
     stop_count = 0;
@@ -150,6 +152,7 @@ void MotionDecision::LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr&
 void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
 {
     cmd_vel = *msg;
+    local_path_received = true;
 }
 
 void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
@@ -205,7 +208,7 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
         double yaw=0;
         double ox,oy,angle;
         if(!go_back){
-            angle = -(2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
+            angle = (2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
             ox = range * cos(angle);
             oy = range * sin(angle);
         }else{
@@ -305,7 +308,6 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
                 vel.linear.x = v;
                 vel.angular.z = w;
                 double ttc = CalcTTC(vel, true);
-                std::cout << "(v,w,ttc)" << v << ", " << w << ", " << ttc << std::endl;
                 if(ttc > max_ttc){
                     max_v = v;
                     max_w = w;
@@ -332,7 +334,6 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
                 vel.linear.x = v;
                 vel.angular.z = w;
                 double ttc = CalcTTC(vel, false);
-                std::cout << "(v,w,ttc)" << v << ", " << w << ", " << ttc << std::endl;
                 if(ttc > max_ttc){
                     max_v = v;
                     max_w = w;
@@ -368,13 +369,14 @@ void MotionDecision::process()
             std::cout << "move : (";
             if(auto_flag){
                 std::cout << "auto";
-                if(front_laser_received && rear_laser_received){
+                if(local_path_received && front_laser_received && rear_laser_received){
                     vel = cmd_vel;
                     bool go_back=false;
-                    if(cmd_vel.linear.x <= 0.0){
+                    if(cmd_vel.linear.x < 0.0){
                         go_back=true;
                     }
                     double ttc = CalcTTC(vel, go_back);
+                    std::cout << "ttc: " << ttc << std::endl;
                     if(target_arrival){
                         std::cout << "=== target arrival ===" << std::endl;
                         vel.linear.x = 0.0;
@@ -443,9 +445,11 @@ void MotionDecision::process()
                     vel.linear.x = 0.0;
                     vel.angular.z = 0.0;
                     std::cout << ")" << std::endl;
+                    std::cout << "local_path : " << local_path_received << std::endl;
                     std::cout << "front_laser: " << front_laser_received << std::endl;
-                    std::cout << "rear_laser: " << rear_laser_received << std::endl;
+                    std::cout << "rear_laser : " << rear_laser_received << std::endl;
                 }
+                local_path_received = false;
                 front_laser_received = false;
                 rear_laser_received = false;
             }else{
