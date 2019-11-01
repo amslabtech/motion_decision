@@ -29,6 +29,6 @@
         <param name="TRIGGER_COUNT_THRESHOLD" value="$(arg trigger_count_threshold)" type="int"/>
         <param name="STOP_SOUND_PATH" value="$(arg stop_sound_path)"/>
         <param name="RECOVERY_SOUND_PATH" value="$(arg recovery_sound_path)"/>
-        <remap from="/cmd_vel" to="/t_frog/cmd_vel"/>
+        <remap from="/cmd_vel" to="/cmd_vel"/>
     </node>
 </launch>
