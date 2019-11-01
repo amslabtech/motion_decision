@@ -207,24 +207,19 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
         double y=0;
         double yaw=0;
         double ox,oy,angle;
-        if(!go_back){
-            angle = (2.0*i/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
-            ox = range * cos(angle);
-            oy = range * sin(angle);
-        }else{
-            angle = (2.0*i/rear_laser.ranges.size()-1.0)*(rear_laser.angle_max);
-            ox = -range * cos(angle);
-            oy = -range * sin(angle);
-        }
+        angle = (2.0*i/laser.ranges.size()-1.0)*(laser.angle_max);
+        ox = range * cos(angle);
+        oy = range * sin(angle);
 
-        for(double t=0; t<PREDICT_TIME; t+=DT){
+        for(double t=DT; t<PREDICT_TIME; t+=DT){
             yaw+=vel.angular.z*DT;
-            x+=vel.linear.x*cos(yaw)*DT;
-            y+=vel.linear.x*sin(yaw)*DT;
+            x+=fabs(vel.linear.x)*cos(yaw)*DT;
+            y+=fabs(vel.linear.x)*sin(yaw)*DT;
             double r = sqrt((x-ox)*(x-ox)+(y-oy)*(y-oy));
             if(r<COLLISION_DISTANCE){
                 if(t<ttc){
                     ttc = t;
+                    break;
                 }
             }
         }
@@ -312,14 +307,27 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
                     max_v = v;
                     max_w = w;
                     max_ttc = ttc;
+                }else if(ttc == max_ttc){
+                    double max_x =  max_v/max_w*sin(max_w*ttc);
+                    double max_y =  max_v/max_w*(1-cos(max_w*ttc));
+                    double x =  v/w*sin(w*ttc);
+                    double y =  v/w*(1-cos(w*ttc));
+                    double angle = (2.0*front_min_idx/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
+                    double angle_diff_a = fabs(angle - atan2(max_y, max_x));
+                    double angle_diff_b = fabs(angle - atan2(y, x));
+                    if(angle_diff_a > angle_diff_b){
+                        max_v = v;
+                        max_w = w;
+                        max_ttc = ttc;
+                    }
                 }
             }
         }
-        if(max_ttc == PREDICT_TIME){
+        if(max_ttc > SAFETY_COLLISION_TIME){
             cmd_vel.linear.x = max_v;
             cmd_vel.angular.z = max_w;
         }else{
-            if(front_min_idx > front_laser.ranges.size()*0.5){
+            if(front_min_idx < front_laser.ranges.size()*0.5){
                 cmd_vel.linear.x = 0.0;
                 cmd_vel.angular.z = 0.2;
             }else{
@@ -338,10 +346,23 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
                     max_v = v;
                     max_w = w;
                     max_ttc = ttc;
+                }else if(ttc == max_ttc){
+                    double max_x =  max_v/max_w*sin(max_w*ttc);
+                    double max_y =  max_v/max_w*(1-cos(max_w*ttc));
+                    double x =  v/w*sin(w*ttc);
+                    double y =  v/w*(1-cos(w*ttc));
+                    double angle = (2.0*rear_min_idx/rear_laser.ranges.size()-1.0)*(rear_laser.angle_max);
+                    double angle_diff_a = fabs(angle - atan2(max_y, max_x));
+                    double angle_diff_b = fabs(angle - atan2(y, x));
+                    if(angle_diff_a > angle_diff_b){
+                        max_v = v;
+                        max_w = w;
+                        max_ttc = ttc;
+                    }
                 }
             }
         }
-        if(max_ttc == PREDICT_TIME){
+        if(max_ttc > SAFETY_COLLISION_TIME){
             cmd_vel.linear.x = max_v;
             cmd_vel.angular.z = max_w;
         }else{
@@ -369,7 +390,7 @@ void MotionDecision::process()
             std::cout << "move : (";
             if(auto_flag){
                 std::cout << "auto";
-                if(local_path_received && front_laser_received && rear_laser_received){
+                if(front_laser_received && rear_laser_received){
                     vel = cmd_vel;
                     bool go_back=false;
                     if(cmd_vel.linear.x < 0.0){
@@ -449,7 +470,7 @@ void MotionDecision::process()
                     std::cout << "front_laser: " << front_laser_received << std::endl;
                     std::cout << "rear_laser : " << rear_laser_received << std::endl;
                 }
-                local_path_received = false;
+                // local_path_received = false;
                 front_laser_received = false;
                 rear_laser_received = false;
             }else{
