@@ -8,7 +8,7 @@
     <arg name="goal_distance" default="0.6"/>
     <arg name="collision_distance" default="0.4"/>
     <arg name="dt" default="0.1"/>
-    <arg name="predict_time" default="10.0"/>
+    <arg name="predict_time" default="2.0"/>
     <arg name="safety_collision_time" default="0.5"/>
     <arg name="recovery_mode_threshold" default="60"/>
     <arg name="trigger_count_threshold" default="2"/>
