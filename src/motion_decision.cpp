@@ -401,7 +401,13 @@ void MotionDecision::process()
                     if(target_arrival){
                         std::cout << "=== target arrival ===" << std::endl;
                         vel.linear.x = 0.0;
-                        vel.angular.z = target_yaw/M_PI * MAX_YAWRATE;
+                        if(target_yaw < M_PI && target_yaw > M_PI*0.1){
+                            vel.angular.z = 0.2;
+                        }else if(target_yaw > -M_PI && target_yaw < -M_PI*0.1){
+                            vel.angular.z = -0.2;
+                        }else{
+                            vel.angular.z = 0.0;
+                        }
                     }
                     if(vel.linear.x == 0.0 && vel.angular.z==0.0){
                         std::cout << ")" << std::endl;
