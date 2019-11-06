@@ -203,6 +203,9 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
     double ttc = PREDICT_TIME;
     int i = 0;
     for(auto range : laser.ranges){
+        if(range < 0.1){
+            continue;
+        }
         double x=0;
         double y=0;
         double yaw=0;
@@ -461,7 +464,7 @@ void MotionDecision::process()
                             }
                         }else{
                             recovery_mode(vel, go_back);
-                            if(ttc > SAFETY_COLLISION_TIME*1.2){
+                            if(ttc > SAFETY_COLLISION_TIME*3.0){
                                 safety_mode_flag = false;
                             }
                         }
