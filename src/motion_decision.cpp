@@ -286,6 +286,8 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
     if(flag.data){
         std::cout << "========= task stop =========" << std::endl;
         move_flag = false;
+    }else{
+        move_flag = true;
     }
 }
 
