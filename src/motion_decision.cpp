@@ -90,7 +90,7 @@ MotionDecision::MotionDecision()
     rear_laser_sub = nh.subscribe("/rear_laser/scan",1, &MotionDecision::RearLaserCallback, this);
     emergency_stop_flag_sub = nh.subscribe("/emergency_stop",1, &MotionDecision::EmergencyStopFlagCallback, this);
     task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::TaskStopFlagCallback, this);
-    local_goal_sub = nh.subscribe("/local_goal",1, &MotionDecision::LocalGoalCallback, this);
+    local_goal_sub = nh.subscribe("/direction/relative",1, &MotionDecision::LocalGoalCallback, this);
 
     //publisher
     vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
@@ -414,7 +414,7 @@ void MotionDecision::process()
                             vel.angular.z = 0.0;
                         }
                     }
-                    if(vel.linear.x == 0.0 && vel.angular.z==0.0){
+                    else if(vel.linear.x == 0.0 && vel.angular.z==0.0){
                         std::cout << ")" << std::endl;
                         std::cout << "=== stuck recovery mode ===" << std::endl;
                         std::cout << "stuck_count" << stuck_count<< std::endl;
