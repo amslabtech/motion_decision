@@ -14,6 +14,7 @@
     <arg name="trigger_count_threshold" default="2"/>
     <arg name="stop_sound_path" default="$(find motion_decision)/sounds/warning1.wav"/>
     <arg name="recovery_sound_path" default="$(find motion_decision)/sounds/warning2.wav"/>
+    <arg name="task_stop_sound_path" default="$(find motion_decision)/sounds/decision4.wav"/>
 
     <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="local_planner">
         <param name="HZ" value="$(arg hz)" type="int"/>
@@ -29,6 +30,7 @@
         <param name="TRIGGER_COUNT_THRESHOLD" value="$(arg trigger_count_threshold)" type="int"/>
         <param name="STOP_SOUND_PATH" value="$(arg stop_sound_path)"/>
         <param name="RECOVERY_SOUND_PATH" value="$(arg recovery_sound_path)"/>
+        <param name="TASK_STOP_SOUND_PATH" value="$(arg task_stop_sound_path)"/>
         <remap from="/cmd_vel" to="/cmd_vel"/>
     </node>
 </launch>

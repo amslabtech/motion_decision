@@ -78,6 +78,7 @@ class MotionDecision{
 
         std::string STOP_SOUND_PATH;
         std::string RECOVERY_SOUND_PATH;
+        std::string TASK_STOP_SOUND_PATH;
 };
 
 MotionDecision::MotionDecision()
@@ -109,6 +110,7 @@ MotionDecision::MotionDecision()
     private_nh.param("TRIGGER_COUNT_THRESHOLD", TRIGGER_COUNT_THRESHOLD, {2});
     private_nh.param("STOP_SOUND_PATH", STOP_SOUND_PATH, {""});
     private_nh.param("RECOVERY_SOUND_PATH", RECOVERY_SOUND_PATH, {""});
+    private_nh.param("TASK_STOP_SOUND_PATH", TASK_STOP_SOUND_PATH, {""});
 
     emergency_stop_flag = false;
     task_stop_flag = false;
@@ -285,6 +287,11 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
     std_msgs::Bool flag = *msg;
     if(flag.data){
         std::cout << "========= task stop =========" << std::endl;
+        if(TASK_STOP_SOUND_PATH != ""){
+            std::string sound_command = "aplay " + TASK_STOP_SOUND_PATH + " &";
+            system(sound_command.c_str());
+            system(sound_command.c_str());
+        }
         move_flag = false;
     }else{
         move_flag = true;
