@@ -16,7 +16,7 @@
     <arg name="recovery_sound_path" default="$(find motion_decision)/sounds/warning2.wav"/>
     <arg name="task_stop_sound_path" default="$(find motion_decision)/sounds/decision4.wav"/>
 
-    <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="local_planner">
+    <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="local_planner" respawn="true">
         <param name="HZ" value="$(arg hz)" type="int"/>
         <param name="MAX_SPEED" value="$(arg max_speed)" type="double"/>
         <param name="MAX_YAWRATE" value="$(arg max_yawrate)" type="double"/>
