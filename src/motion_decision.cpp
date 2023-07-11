@@ -20,65 +20,65 @@ class MotionDecision{
         void process();
 
     private:
-        ros::NodeHandle nh;
-        ros::NodeHandle private_nh;
+        ros::NodeHandle nh_;
+        ros::NodeHandle private_nh_;
 
         //subscriber
-        ros::Subscriber local_path_sub;
-        ros::Subscriber joy_sub;
-        ros::Subscriber emergency_stop_flag_sub;
-        ros::Subscriber task_stop_flag_sub;
-        ros::Subscriber front_laser_sub;
-        ros::Subscriber rear_laser_sub;
-        ros::Subscriber local_goal_sub;
+        ros::Subscriber local_path_sub_;
+        ros::Subscriber joy_sub_;
+        ros::Subscriber emergency_stop_flag_sub_;
+        ros::Subscriber task_stop_flag_sub_;
+        ros::Subscriber front_laser_sub_;
+        ros::Subscriber rear_laser_sub_;
+        ros::Subscriber local_goal_sub_;
 
         //publisher
-        ros::Publisher vel_pub;
-        ros::Publisher intersection_flag_pub;
+        ros::Publisher vel_pub_;
+        ros::Publisher intersection_flag_pub_;
 
         void recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back);
         float CalcTTC(geometry_msgs::Twist vel, bool go_back);
 
-        bool emergency_stop_flag;
-        bool task_stop_flag;
-        bool auto_flag;
-        bool move_flag;
-        bool joy_flag;
-        bool intersection_flag;
-        bool safety_mode_flag;
-        bool laser_flag;
-        bool target_arrival;
-        bool local_path_received;
-        bool front_laser_received;
-        bool rear_laser_received;
-        geometry_msgs::Twist cmd_vel;
-        geometry_msgs::Twist joy_vel;
-        sensor_msgs::LaserScan front_laser;
-        sensor_msgs::LaserScan rear_laser;
-        sensor_msgs::Joy joy;
-        float front_min_range;
-        float rear_min_range;
-        int HZ;
-        double MAX_SPEED;
-        double MAX_YAWRATE;
-        double VEL_RATIO;
-        double GOAL_DISTANCE;
-        double COLLISION_DISTANCE;
-        double DT;
-        double PREDICT_TIME;
-        double SAFETY_COLLISION_TIME;
-        int RECOVERY_MODE_THRESHOLD;
-        int TRIGGER_COUNT_THRESHOLD;
-        int stop_count;
-        int stuck_count;
-        int trigger_count;
-        int front_min_idx;
-        int rear_min_idx;
-        double target_yaw;
+        bool emergency_stop_flag_;
+        bool task_stop_flag_;
+        bool auto_flag_;
+        bool move_flag_;
+        bool joy_flag_;
+        bool intersection_flag_;
+        bool safety_mode_flag_;
+        bool laser_flag_;
+        bool target_arrival_;
+        bool local_path_received_;
+        bool front_laser_received_;
+        bool rear_laser_received_;
+        geometry_msgs::Twist cmd_vel_;
+        geometry_msgs::Twist joy_vel_;
+        sensor_msgs::LaserScan front_laser_;
+        sensor_msgs::LaserScan rear_laser_;
+        sensor_msgs::Joy joy_;
+        float front_min_range_;
+        float rear_min_range_;
+        int HZ_;
+        double MAX_SPEED_;
+        double MAX_YAWRATE_;
+        double VEL_RATIO_;
+        double GOAL_DISTANCE_;
+        double COLLISION_DISTANCE_;
+        double DT_;
+        double PREDICT_TIME_;
+        double SAFETY_COLLISION_TIME_;
+        int RECOVERY_MODE_THRESHOLD_;
+        int TRIGGER_COUNT_THRESHOLD_;
+        int stop_count_;
+        int stuck_count_;
+        int trigger_count_;
+        int front_min_idx_;
+        int rear_min_idx_;
+        double target_yaw_;
 
-        std::string STOP_SOUND_PATH;
-        std::string RECOVERY_SOUND_PATH;
-        std::string TASK_STOP_SOUND_PATH;
+        std::string STOP_SOUND_PATH_;
+        std::string RECOVERY_SOUND_PATH_;
+        std::string TASK_STOP_SOUND_PATH_;
 };
 
 MotionDecision::MotionDecision()
