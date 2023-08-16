@@ -9,13 +9,13 @@
 class MotionDecision{
     public:
         MotionDecision();
-        void LocalPathCallback(const geometry_msgs::TwistConstPtr& msg);
-        void JoyCallback(const sensor_msgs::JoyConstPtr& msg);
-        void EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg);
-        void TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg);
-        void FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
-        void RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
-        void LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+        void local_path_callback(const geometry_msgs::TwistConstPtr& msg);
+        void joy_callback(const sensor_msgs::JoyConstPtr& msg);
+        void emergency_stop_flag_callback(const std_msgs::BoolConstPtr& msg);
+        void task_stop_flag_callback(const std_msgs::BoolConstPtr& msg);
+        void front_laser_callback(const sensor_msgs::LaserScanConstPtr& msg);
+        void rear_laser_callback(const sensor_msgs::LaserScanConstPtr& msg);
+        void local_goal_callback(const geometry_msgs::PoseStampedConstPtr& msg);
 
         void process();
 
@@ -37,7 +37,7 @@ class MotionDecision{
         ros::Publisher intersection_flag_pub_;
 
         void recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back);
-        float CalcTTC(geometry_msgs::Twist vel, bool go_back);
+        float calc_TTC(geometry_msgs::Twist vel, bool go_back);
 
         bool emergency_stop_flag_;
         bool task_stop_flag_;
@@ -85,13 +85,13 @@ MotionDecision::MotionDecision()
     :private_nh("~")
 {
     //subscriber
-    local_path_sub = nh.subscribe("/local_path/cmd_vel",1, &MotionDecision::LocalPathCallback, this);
-    joy_sub = nh.subscribe("/joy",1, &MotionDecision::JoyCallback, this);
-    front_laser_sub = nh.subscribe("/front_laser/scan",1, &MotionDecision::FrontLaserCallback, this);
-    rear_laser_sub = nh.subscribe("/rear_laser/scan",1, &MotionDecision::RearLaserCallback, this);
-    emergency_stop_flag_sub = nh.subscribe("/emergency_stop",1, &MotionDecision::EmergencyStopFlagCallback, this);
-    task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::TaskStopFlagCallback, this);
-    local_goal_sub = nh.subscribe("/local_goal",1, &MotionDecision::LocalGoalCallback, this);
+    local_path_sub = nh.subscribe("/local_path/cmd_vel",1, &MotionDecision::local_path_callback, this);
+    joy_sub = nh.subscribe("/joy",1, &MotionDecision::joy_callback, this);
+    front_laser_sub = nh.subscribe("/front_laser/scan",1, &MotionDecision::front_laser_callback, this);
+    rear_laser_sub = nh.subscribe("/rear_laser/scan",1, &MotionDecision::rear_laser_callback, this);
+    emergency_stop_flag_sub = nh.subscribe("/emergency_stop",1, &MotionDecision::emergency_stop_flag_callback, this);
+    task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::task_stop_flag_callback, this);
+    local_goal_sub = nh.subscribe("/local_goal",1, &MotionDecision::local_goal_callback, this);
 
     //publisher
     vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
@@ -135,7 +135,7 @@ MotionDecision::MotionDecision()
     cmd_vel.angular.z = 0.0;
 }
 
-void MotionDecision::LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr& msg)
+void MotionDecision::local_goal_callback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
     geometry_msgs::PoseStamped local_goal;
     local_goal = *msg;
@@ -151,13 +151,13 @@ void MotionDecision::LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr&
     target_yaw = tf::getYaw(quaternion);
 }
 
-void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
+void MotionDecision::local_path_callback(const geometry_msgs::TwistConstPtr& msg)
 {
     cmd_vel = *msg;
     local_path_received = true;
 }
 
-void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
+void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
     front_laser = *msg;
     front_min_range = front_laser.range_max;
@@ -175,7 +175,7 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
     front_laser_received = true;
 }
 
-void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
+void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr& msg)
 {
     rear_laser = *msg;
     rear_min_range = rear_laser.range_max;
@@ -193,7 +193,7 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
     rear_laser_received = true;
 }
 
-float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
+float MotionDecision::calc_TTC(geometry_msgs::Twist vel, bool go_back)
 {
     sensor_msgs::LaserScan laser;
     if(!go_back){
@@ -233,7 +233,7 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
     return ttc;
 }
 
-void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
+void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr& msg)
 {
     joy = *msg;
     if(joy.buttons[3]){ //square button
@@ -277,12 +277,12 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
     }
 }
 
-void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg)
+void MotionDecision::emergency_stop_flag_callback(const std_msgs::BoolConstPtr& msg)
 {
     emergency_stop_flag = msg->data;
 }
 
-void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
+void MotionDecision::task_stop_flag_callback(const std_msgs::BoolConstPtr& msg)
 {
     std_msgs::Bool flag = *msg;
     if(flag.data){
@@ -314,7 +314,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
                 geometry_msgs::Twist vel;
                 vel.linear.x = v;
                 vel.angular.z = w;
-                double ttc = CalcTTC(vel, true);
+                double ttc = calc_TTC(vel, true);
                 if(ttc > max_ttc){
                     max_v = v;
                     max_w = w;
@@ -353,7 +353,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
                 geometry_msgs::Twist vel;
                 vel.linear.x = v;
                 vel.angular.z = w;
-                double ttc = CalcTTC(vel, false);
+                double ttc = calc_TTC(vel, false);
                 if(ttc > max_ttc){
                     max_v = v;
                     max_w = w;
@@ -409,7 +409,7 @@ void MotionDecision::process()
                 //     if(cmd_vel.linear.x < 0.0){
                 //         go_back=true;
                 //     }
-                //     double ttc = CalcTTC(vel, go_back);
+                //     double ttc = calc_TTC(vel, go_back);
                 //     std::cout << "ttc: " << ttc << std::endl;
                 //     if(target_arrival){
                 //         std::cout << "=== target arrival ===" << std::endl;
