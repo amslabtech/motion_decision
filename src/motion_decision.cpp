@@ -232,12 +232,12 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 /**
  * @brief Calclate TTC.
  * @param [in] vel current velocity
- * @param [in] go_back derection of motion
+ * @param [in] go_back direction of motion
  * @return float ttc result of TTC calculation
  */
 float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
 {
-    // select laser data by derection of motion
+    // select laser data by direction of motion
     sensor_msgs::LaserScan laser;
     if(!go_back){
         laser = front_laser;
@@ -339,7 +339,7 @@ void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg
 /**
  * @brief task stop flag callback function.
  * emergency stop when task stop flag is true.
- * 
+ *
  * @param [in] msg msg from task_stop_flag_sub
  */
 void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
@@ -361,7 +361,7 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 /**
  * @brief code for recovery mode. this function is unused now.
  * @param [out] cmd_vel velocity. overwritten to recovery mode velocity.
- * @param [in] go_back derection of motion
+ * @param [in] go_back direction of motion
  */
 void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 {
