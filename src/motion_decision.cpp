@@ -1,3 +1,9 @@
+/**
+ * @file motion_decision.cpp
+ * @author AMSL
+ * @brief C++ implementation for Motion Decision
+ */
+
 #include <ros/ros.h>
 #include <tf/tf.h>
 #include <std_msgs/Bool.h>
@@ -6,8 +12,15 @@
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/LaserScan.h>
 
+/**
+ * @brief Motion Decision Class.
+ */
+
 class MotionDecision{
     public:
+        /**
+         * @brief Constructor
+         */
         MotionDecision();
         void LocalPathCallback(const geometry_msgs::TwistConstPtr& msg);
         void JoyCallback(const sensor_msgs::JoyConstPtr& msg);
@@ -81,6 +94,9 @@ class MotionDecision{
         std::string TASK_STOP_SOUND_PATH;
 };
 
+/**
+ * @brief Construct a new Motion Decision:: Motion Decision object.
+ */
 MotionDecision::MotionDecision()
     :private_nh("~")
 {
@@ -135,11 +151,17 @@ MotionDecision::MotionDecision()
     cmd_vel.angular.z = 0.0;
 }
 
+/**
+ * @brief Local goal callback function.
+ * @param [in] msg msg from local_goal_sub
+ */
 void MotionDecision::LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr& msg)
 {
     geometry_msgs::PoseStamped local_goal;
     local_goal = *msg;
     target_arrival = false;
+
+    // detect arrival at target
     double x = local_goal.pose.position.x;
     double y = local_goal.pose.position.y;
     double dis = sqrt(x*x + y*y);
@@ -151,12 +173,21 @@ void MotionDecision::LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr&
     target_yaw = tf::getYaw(quaternion);
 }
 
+/**
+ * @brief local path callback function.
+ * @param [in] msg msg from local_path_sub
+ */
 void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
 {
     cmd_vel = *msg;
     local_path_received = true;
 }
 
+/**
+ * @brief front laser callback function.
+ * Cache the closest valid sensor data and its index in front_min_range and front_min_idx respectively.
+ * @param [in] msg msg from front_laser_sub
+ */
 void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
 {
     front_laser = *msg;
@@ -175,6 +206,11 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
     front_laser_received = true;
 }
 
+/**
+ * @brief rear laser callback function.
+ * Cache the closest valid sensor data and its index in rear_min_range and rear_min_idx respectively.
+ * @param [in] msg msg from rear_laser_sub
+ */
 void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
 {
     rear_laser = *msg;
@@ -193,8 +229,15 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
     rear_laser_received = true;
 }
 
+/**
+ * @brief Calclate TTC.
+ * @param [in] vel current velocity
+ * @param [in] go_back direction of motion
+ * @return float ttc result of TTC calculation
+ */
 float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
 {
+    // select laser data by direction of motion
     sensor_msgs::LaserScan laser;
     if(!go_back){
         laser = front_laser;
@@ -202,9 +245,11 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
         laser = rear_laser;
     }
 
+    // calculate TTC
     double ttc = PREDICT_TIME;
     int i = 0;
     for(auto range : laser.ranges){
+        // ignore invalid laser data
         if(range < 0.1){
             continue;
         }
@@ -233,6 +278,11 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
     return ttc;
 }
 
+/**
+ * @brief rear laser callback function.
+ * set flags by input from joy.
+ * @param [in] msg msg from joy_sub
+ */
 void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 {
     joy = *msg;
@@ -277,11 +327,21 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
     }
 }
 
+/**
+ * @brief emergency stop flag callback function.
+ * @param [in] msg msg from emergency_stop_flag_sub
+ */
 void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 {
     emergency_stop_flag = msg->data;
 }
 
+/**
+ * @brief task stop flag callback function.
+ * emergency stop when task stop flag is true.
+ *
+ * @param [in] msg msg from task_stop_flag_sub
+ */
 void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 {
     std_msgs::Bool flag = *msg;
@@ -298,9 +358,15 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
     }
 }
 
+/**
+ * @brief code for recovery mode. this function is unused now.
+ * @param [out] cmd_vel velocity. overwritten to recovery mode velocity.
+ * @param [in] go_back direction of motion
+ */
 void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 {
     std::cout << "=== recovery mode ===" << std::endl;
+    // variables for recovery mode
     double max_velocity = 0.3;
     double max_yawrate = 0.3;
     double velocity_resolution = 0.1;
@@ -309,11 +375,15 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
     double max_w = 0.0;
     double max_ttc = 0.0;
     if(!go_back){
+    // when moving forwards
+        // calclate ttc when if go backwards
         for(double v=-velocity_resolution; v>=-max_velocity; v-=velocity_resolution){
             for(double w=-max_yawrate; w<=max_yawrate; w+=yawrate_resolution){
                 geometry_msgs::Twist vel;
                 vel.linear.x = v;
                 vel.angular.z = w;
+                // carefull to modify param true
+                // go_back variable is false but robot moving backwards virtuary so needed laser data is rear's
                 double ttc = CalcTTC(vel, true);
                 if(ttc > max_ttc){
                     max_v = v;
@@ -339,6 +409,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
             cmd_vel.linear.x = max_v;
             cmd_vel.angular.z = max_w;
         }else{
+            // set vel to move away from obstacles
             if(front_min_idx < front_laser.ranges.size()*0.5){
                 cmd_vel.linear.x = 0.0;
                 cmd_vel.angular.z = 0.2;
@@ -348,11 +419,15 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
             }
         }
     }else{
+    // when moving backwards
+        // calclate ttc when if go forwards
         for(double v=velocity_resolution; v<=max_velocity; v+=velocity_resolution){
             for(double w=-max_yawrate; w<=max_yawrate; w+=yawrate_resolution){
                 geometry_msgs::Twist vel;
                 vel.linear.x = v;
                 vel.angular.z = w;
+                // carefull to modify param true
+                // go_back variable is true but robot moving forwards virtuary so needed laser data is front's
                 double ttc = CalcTTC(vel, false);
                 if(ttc > max_ttc){
                     max_v = v;
@@ -378,6 +453,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
             cmd_vel.linear.x = max_v;
             cmd_vel.angular.z = max_w;
         }else{
+            // set vel to move away from obstacles
             if(rear_min_idx > rear_laser.ranges.size()*0.5){
                 cmd_vel.linear.x = 0.0;
                 cmd_vel.angular.z = -0.2;
@@ -389,6 +465,9 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
     }
 }
 
+/**
+ * @brief process function
+ */
 void MotionDecision::process()
 {
     ros::Rate loop_rate(HZ);
@@ -537,6 +616,12 @@ void MotionDecision::process()
     }
 }
 
+/**
+ * @brief main function
+ * @param argc no info
+ * @param argv no info
+ * @return int no info
+ */
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "motion_decision");
