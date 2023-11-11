@@ -29,6 +29,7 @@ class MotionDecision{
         void FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
         void RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
         void LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+        void RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr& msg);
 
         void process();
 
@@ -44,6 +45,7 @@ class MotionDecision{
         ros::Subscriber front_laser_sub;
         ros::Subscriber rear_laser_sub;
         ros::Subscriber local_goal_sub;
+        ros::Subscriber recovery_mode_flag_sub;
 
         //publisher
         ros::Publisher vel_pub;
@@ -60,6 +62,7 @@ class MotionDecision{
         bool intersection_flag;
         bool safety_mode_flag;
         bool laser_flag;
+        bool enable_recovery_mode;
         bool target_arrival;
         bool local_path_received;
         bool front_laser_received;
@@ -108,6 +111,7 @@ MotionDecision::MotionDecision()
     emergency_stop_flag_sub = nh.subscribe("/emergency_stop",1, &MotionDecision::EmergencyStopFlagCallback, this);
     task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::TaskStopFlagCallback, this);
     local_goal_sub = nh.subscribe("/local_goal",1, &MotionDecision::LocalGoalCallback, this);
+    recovery_mode_flag_sub = nh.subscribe("/recovery_mode_flag", 1, &MotionDecision::RecoveryModeFlagCallback, this);
 
     //publisher
     vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
@@ -136,6 +140,7 @@ MotionDecision::MotionDecision()
     joy_flag = false;
     laser_flag = false;
     intersection_flag = false;
+    enable_recovery_mode = false;
     target_arrival = false;
     local_path_received = false;
     front_laser_received = true;
@@ -230,7 +235,16 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 }
 
 /**
- * @brief Calclate TTC.
+ * @brief recovery mode flag callback function.
+ * @param [in] msg msg from recovery_mode_flag_sub
+ */
+void MotionDecision::RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr &msg)
+{
+    enable_recovery_mode = msg->data;
+}
+
+/**
+ * @brief Calculate TTC.
  * @param [in] vel current velocity
  * @param [in] go_back direction of motion
  * @return float ttc result of TTC calculation
@@ -376,7 +390,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
     double max_ttc = 0.0;
     if(!go_back){
     // when moving forwards
-        // calclate ttc when if go backwards
+        // calculate ttc when if go backwards
         for(double v=-velocity_resolution; v>=-max_velocity; v-=velocity_resolution){
             for(double w=-max_yawrate; w<=max_yawrate; w+=yawrate_resolution){
                 geometry_msgs::Twist vel;
@@ -420,7 +434,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
         }
     }else{
     // when moving backwards
-        // calclate ttc when if go forwards
+        // calculate ttc when if go forwards
         for(double v=velocity_resolution; v<=max_velocity; v+=velocity_resolution){
             for(double w=-max_yawrate; w<=max_yawrate; w+=yawrate_resolution){
                 geometry_msgs::Twist vel;
@@ -479,98 +493,27 @@ void MotionDecision::process()
         std::cout << "trigger count   : " << trigger_count  << std::endl;
         if(move_flag){
             std::cout << "move : (";
+            /* this branch */
             if(auto_flag){
                 std::cout << "auto";
                 vel= cmd_vel;
-                // if(front_laser_received && rear_laser_received){
-                //     vel = cmd_vel;
-                //     bool go_back=false;
-                //     if(cmd_vel.linear.x < 0.0){
-                //         go_back=true;
-                //     }
-                //     double ttc = CalcTTC(vel, go_back);
-                //     std::cout << "ttc: " << ttc << std::endl;
-                //     if(target_arrival){
-                //         std::cout << "=== target arrival ===" << std::endl;
-                //         vel.linear.x = 0.0;
-                //         if(target_yaw < M_PI && target_yaw > M_PI*0.1){
-                //             vel.angular.z = 0.2;
-                //         }else if(target_yaw > -M_PI && target_yaw < -M_PI*0.1){
-                //             vel.angular.z = -0.2;
-                //         }else{
-                //             vel.angular.z = 0.0;
-                //         }
-                //     }
-                //     else if(vel.linear.x == 0.0 && vel.angular.z==0.0){
-                //         std::cout << ")" << std::endl;
-                //         std::cout << "=== stuck recovery mode ===" << std::endl;
-                //         std::cout << "stuck_count" << stuck_count<< std::endl;
-                //         if(stuck_count < RECOVERY_MODE_THRESHOLD){
-                //             stuck_count ++;
-                //             if(stuck_count == RECOVERY_MODE_THRESHOLD){
-                //                 if(RECOVERY_SOUND_PATH != ""){
-                //                     std::string sound_command = "aplay " + RECOVERY_SOUND_PATH + " &";
-                //                     system(sound_command.c_str());
-                //                 }
-                //             }
-                //         }else{
-                //             recovery_mode(vel, go_back);
-                //         }
-                //     }else{
-                //         stuck_count = 0;
-                //     }
-                //     if(ttc < SAFETY_COLLISION_TIME){
-                //         if(trigger_count>TRIGGER_COUNT_THRESHOLD){
-                //             laser_flag = true;
-                //         }
-                //         trigger_count++;
-                //     }else{
-                //         trigger_count = 0;
-                //         laser_flag = false;
-                //     }
-                //     if(!safety_mode_flag){
-                //         if(laser_flag){
-                //             safety_mode_flag = true;
-                //             if(STOP_SOUND_PATH != ""){
-                //                 std::string sound_command = "aplay " + STOP_SOUND_PATH + " &";
-                //                 system(sound_command.c_str());
-                //             }
-                //         }
-                //     }
-                //     if(safety_mode_flag){
-                //         std::cout << ")" << std::endl;
-                //         std::cout << "=== safety mode ===" << std::endl;
-                //         std::cout << "stop_count" << stop_count<< std::endl;
-                //         if(stop_count < RECOVERY_MODE_THRESHOLD){
-                //             vel.linear.x = 0.0;
-                //             vel.angular.z = 0.0;
-                //             stop_count ++;
-                //             if(stop_count == RECOVERY_MODE_THRESHOLD){
-                //                 if(RECOVERY_SOUND_PATH != ""){
-                //                     std::string sound_command = "aplay " + RECOVERY_SOUND_PATH + " &";
-                //                     system(sound_command.c_str());
-                //                 }
-                //             }
-                //         }else{
-                //             recovery_mode(vel, go_back);
-                //             if(ttc > SAFETY_COLLISION_TIME*3.0){
-                //                 safety_mode_flag = false;
-                //             }
-                //         }
-                //     }else{
-                //         stop_count = 0;
-                //     }
-                // }else{
-                //     vel.linear.x = 0.0;
-                //     vel.angular.z = 0.0;
-                //     std::cout << ")" << std::endl;
-                //     std::cout << "local_path : " << local_path_received << std::endl;
-                //     std::cout << "front_laser: " << front_laser_received << std::endl;
-                //     std::cout << "rear_laser : " << rear_laser_received << std::endl;
-                // }
-                // local_path_received = false;
-                front_laser_received = false;
-                rear_laser_received = false;
+                if(0 < trigger_count && trigger_count < TRIGGER_COUNT_THRESHOLD){
+                    recovery_mode(vel, false);
+                    trigger_count++;
+                }else if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && -DBL_EPSILON < vel.angular.z && vel.angular.z < DBL_EPSILON){
+                    std::cout << ")" << std::endl;
+                    std::cout << "=== stuck recovery mode ===" << std::endl;
+                    std::cout << "stuck_count" << stuck_count << std::endl;
+                    if(stuck_count < RECOVERY_MODE_THRESHOLD){
+                        stuck_count++;
+                    }else{
+                        recovery_mode(vel, false);
+                        trigger_count++;
+                    }
+                }else{
+                    stuck_count = 0;
+                    trigger_count = 0;
+                }
             }else{
                 std::cout << "manual";
                 if(joy_flag){
@@ -582,6 +525,110 @@ void MotionDecision::process()
             }
             std::cout << ")" << std::endl;
             std::cout << vel << std::endl;
+
+            /* master */
+            // if(auto_flag){
+            //     std::cout << "auto";
+            //     if(front_laser_received && rear_laser_received){
+            //         vel = cmd_vel;
+            //         bool go_back=false;
+            //         if(cmd_vel.linear.x < 0.0){
+            //             go_back=true;
+            //         }
+            //         double ttc = CalcTTC(vel, go_back);
+            //         std::cout << "ttc: " << ttc << std::endl;
+            //         if(target_arrival){
+            //             std::cout << "=== target arrival ===" << std::endl;
+            //             vel.linear.x = 0.0;
+            //             if(target_yaw < M_PI && target_yaw > M_PI*0.1){
+            //                 vel.angular.z = 0.2;
+            //             }else if(target_yaw > -M_PI && target_yaw < -M_PI*0.1){
+            //                 vel.angular.z = -0.2;
+            //             }else{
+            //                 vel.angular.z = 0.0;
+            //             }
+            //         }
+            //         else if(vel.linear.x == 0.0 && vel.angular.z==0.0){
+            //             std::cout << ")" << std::endl;
+            //             std::cout << "=== stuck recovery mode ===" << std::endl;
+            //             std::cout << "stuck_count" << stuck_count << std::endl;
+            //             if(stuck_count < RECOVERY_MODE_THRESHOLD){
+            //                 stuck_count ++;
+            //                 if(stuck_count == RECOVERY_MODE_THRESHOLD){
+            //                     if(RECOVERY_SOUND_PATH != ""){
+            //                         std::string sound_command = "aplay " + RECOVERY_SOUND_PATH + " &";
+            //                         system(sound_command.c_str());
+            //                     }
+            //                 }
+            //             }else{
+            //                 recovery_mode(vel, go_back);
+            //             }
+            //         }else{
+            //             stuck_count = 0;
+            //         }
+            //         if(ttc < SAFETY_COLLISION_TIME){
+            //             if(trigger_count>TRIGGER_COUNT_THRESHOLD){
+            //                 laser_flag = true;
+            //             }
+            //             trigger_count++;
+            //         }else{
+            //             trigger_count = 0;
+            //             laser_flag = false;
+            //         }
+            //         if(!safety_mode_flag){
+            //             if(laser_flag){
+            //                 safety_mode_flag = true;
+            //                 if(STOP_SOUND_PATH != ""){
+            //                     std::string sound_command = "aplay " + STOP_SOUND_PATH + " &";
+            //                     system(sound_command.c_str());
+            //                 }
+            //             }
+            //         }
+            //         if(safety_mode_flag){
+            //             std::cout << ")" << std::endl;
+            //             std::cout << "=== safety mode ===" << std::endl;
+            //             std::cout << "stop_count" << stop_count<< std::endl;
+            //             if(stop_count < RECOVERY_MODE_THRESHOLD){
+            //                 vel.linear.x = 0.0;
+            //                 vel.angular.z = 0.0;
+            //                 stop_count ++;
+            //                 if(stop_count == RECOVERY_MODE_THRESHOLD){
+            //                     if(RECOVERY_SOUND_PATH != ""){
+            //                         std::string sound_command = "aplay " + RECOVERY_SOUND_PATH + " &";
+            //                         system(sound_command.c_str());
+            //                     }
+            //                 }
+            //             }else{
+            //                 recovery_mode(vel, go_back);
+            //                 if(ttc > SAFETY_COLLISION_TIME*3.0){
+            //                     safety_mode_flag = false;
+            //                 }
+            //             }
+            //         }else{
+            //             stop_count = 0;
+            //         }
+            //     }else{
+            //         vel.linear.x = 0.0;
+            //         vel.angular.z = 0.0;
+            //         std::cout << ")" << std::endl;
+            //         std::cout << "local_path : " << local_path_received << std::endl;
+            //         std::cout << "front_laser: " << front_laser_received << std::endl;
+            //         std::cout << "rear_laser : " << rear_laser_received << std::endl;
+            //     }
+            //     local_path_received = false;
+            //     front_laser_received = false;
+            //     rear_laser_received = false;
+            // }else{
+            //     std::cout << "manual";
+            //     if(joy_flag){
+            //         vel = joy_vel;
+            //     }else{
+            //         vel.linear.x = 0.0;
+            //         vel.angular.z = 0.0;
+            //     }
+            // }
+            // std::cout << ")" << std::endl;
+            // std::cout << vel << std::endl;
         }else{
             std::cout << "stop : (" << (auto_flag ? "auto" : "manual") << ")"<< std::endl;
             vel.linear.x = 0.0;
