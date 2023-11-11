@@ -490,23 +490,29 @@ void MotionDecision::process()
         std::cout << "==== motion decision ====" << std::endl;
         std::cout << "min front laser : " << front_min_range << std::endl;
         std::cout << "min rear laser  : " << rear_min_range  << std::endl;
-        // std::cout << "trigger count   : " << trigger_count  << std::endl;
+        std::cout << "trigger count   : " << trigger_count  << std::endl;
         if(move_flag){
             std::cout << "move : (";
+            /* this branch */
             if(auto_flag){
                 std::cout << "auto";
                 vel= cmd_vel;
-                if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && -DBL_EPSILON < vel.angular.z && vel.angular.z < DBL_EPSILON){
+                if(0 < trigger_count && trigger_count < TRIGGER_COUNT_THRESHOLD){
+                    recovery_mode(vel, false);
+                    trigger_count++;
+                }else if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && -DBL_EPSILON < vel.angular.z && vel.angular.z < DBL_EPSILON){
                     std::cout << ")" << std::endl;
                     std::cout << "=== stuck recovery mode ===" << std::endl;
                     std::cout << "stuck_count" << stuck_count << std::endl;
                     if(stuck_count < RECOVERY_MODE_THRESHOLD){
-                        stuck_count ++;
+                        stuck_count++;
                     }else{
                         recovery_mode(vel, false);
+                        trigger_count++;
                     }
                 }else{
                     stuck_count = 0;
+                    trigger_count = 0;
                 }
             }else{
                 std::cout << "manual";
@@ -519,6 +525,8 @@ void MotionDecision::process()
             }
             std::cout << ")" << std::endl;
             std::cout << vel << std::endl;
+
+            /* master */
             // if(auto_flag){
             //     std::cout << "auto";
             //     if(front_laser_received && rear_laser_received){
