@@ -500,7 +500,7 @@ void MotionDecision::process()
                 if(0 < trigger_count && trigger_count < TRIGGER_COUNT_THRESHOLD){
                     recovery_mode(vel, false);
                     trigger_count++;
-                }else if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && -DBL_EPSILON < vel.angular.z && vel.angular.z < DBL_EPSILON){
+                }else if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON){
                     std::cout << ")" << std::endl;
                     std::cout << "=== stuck recovery mode ===" << std::endl;
                     std::cout << "stuck_count" << stuck_count << std::endl;
