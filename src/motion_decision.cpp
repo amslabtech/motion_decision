@@ -380,6 +380,12 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 {
     std::cout << "=== recovery mode ===" << std::endl;
+    if(!front_laser_received || !rear_laser_received){
+        cmd_vel.linear.x = 0.0;
+        cmd_vel.angular.z = 0.0;
+        return;
+    }
+
     // variables for recovery mode
     double max_velocity = 0.3;
     double max_yawrate = 0.3;
@@ -388,6 +394,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
     double max_v = 0.0;
     double max_w = 0.0;
     double max_ttc = 0.0;
+    bool reverse_flag = false;
     if(!go_back){
     // when moving forwards
         // calculate ttc when if go backwards
@@ -411,7 +418,12 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
                     double angle = (2.0*front_min_idx/front_laser.ranges.size()-1.0)*(front_laser.angle_max);
                     double angle_diff_a = fabs(angle - atan2(max_y, max_x));
                     double angle_diff_b = fabs(angle - atan2(y, x));
-                    if(angle_diff_a > angle_diff_b){
+                    if(M_PI/2.0 <= fabs(angle) && angle_diff_a < angle_diff_b && CalcTTC(vel, false) > SAFETY_COLLISION_TIME){
+                        max_v = v;
+                        max_w = w;
+                        max_ttc = ttc;
+                        reverse_flag = true;
+                    }else if(!reverse_flag && angle_diff_a > angle_diff_b){
                         max_v = v;
                         max_w = w;
                         max_ttc = ttc;
@@ -500,7 +512,7 @@ void MotionDecision::process()
                 if(0 < trigger_count && trigger_count < TRIGGER_COUNT_THRESHOLD){
                     recovery_mode(vel, false);
                     trigger_count++;
-                }else if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && -DBL_EPSILON < vel.angular.z && vel.angular.z < DBL_EPSILON){
+                }else if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON){
                     std::cout << ")" << std::endl;
                     std::cout << "=== stuck recovery mode ===" << std::endl;
                     std::cout << "stuck_count" << stuck_count << std::endl;
@@ -514,6 +526,8 @@ void MotionDecision::process()
                     stuck_count = 0;
                     trigger_count = 0;
                 }
+                front_laser_received = false;
+                rear_laser_received = false;
             }else{
                 std::cout << "manual";
                 if(joy_flag){
