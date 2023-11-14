@@ -650,6 +650,9 @@ void MotionDecision::process()
             std::cout << "stop : (" << (auto_flag ? "auto" : "manual") << ")"<< std::endl;
             vel.linear.x = 0.0;
             vel.angular.z = 0.0;
+
+            stuck_count = 0;
+            trigger_count = 0;
         }
         if(emergency_stop_flag){
             std::cout << "emergency stop" << std::endl;
