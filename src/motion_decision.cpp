@@ -536,6 +536,9 @@ void MotionDecision::process()
                     vel.linear.x = 0.0;
                     vel.angular.z = 0.0;
                 }
+
+                stuck_count = 0;
+                trigger_count = 0;
             }
             std::cout << ")" << std::endl;
             std::cout << vel << std::endl;
@@ -672,6 +675,10 @@ void MotionDecision::process()
         }
 
         vel_pub.publish(vel);
+
+        front_min_range = -1.0;
+        rear_min_range = -1.0;
+
         loop_rate.sleep();
         ros::spinOnce();
     }
