@@ -249,6 +249,10 @@ void MotionDecision::RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr &ms
     enable_recovery_mode = msg->data;
 }
 
+/**
+ * @brief odom callback function.
+ * @param [in] msg msg from odom_sub
+ */
 void MotionDecision::OdomCallback(const nav_msgs::OdometryConstPtr &msg)
 {
     odom = *msg;
