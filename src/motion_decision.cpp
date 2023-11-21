@@ -11,6 +11,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/LaserScan.h>
+#include <nav_msgs/Odometry.h>
 
 /**
  * @brief Motion Decision Class.
@@ -30,6 +31,7 @@ class MotionDecision{
         void RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
         void LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr& msg);
         void RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr& msg);
+        void OdomCallback(const nav_msgs::OdometryConstPtr &msg);
 
         void process();
 
@@ -46,6 +48,7 @@ class MotionDecision{
         ros::Subscriber rear_laser_sub;
         ros::Subscriber local_goal_sub;
         ros::Subscriber recovery_mode_flag_sub;
+        ros::Subscriber odom_sub;
 
         //publisher
         ros::Publisher vel_pub;
@@ -95,6 +98,8 @@ class MotionDecision{
         std::string STOP_SOUND_PATH;
         std::string RECOVERY_SOUND_PATH;
         std::string TASK_STOP_SOUND_PATH;
+
+        nav_msgs::Odometry odom;
 };
 
 /**
@@ -112,6 +117,7 @@ MotionDecision::MotionDecision()
     task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::TaskStopFlagCallback, this);
     local_goal_sub = nh.subscribe("/local_goal",1, &MotionDecision::LocalGoalCallback, this);
     recovery_mode_flag_sub = nh.subscribe("/recovery_mode_flag", 1, &MotionDecision::RecoveryModeFlagCallback, this);
+    odom_sub = nh.subscribe("/odom", 1, &MotionDecision::OdomCallback, this);
 
     //publisher
     vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
@@ -241,6 +247,11 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 void MotionDecision::RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr &msg)
 {
     enable_recovery_mode = msg->data;
+}
+
+void MotionDecision::OdomCallback(const nav_msgs::OdometryConstPtr &msg)
+{
+    odom = *msg;
 }
 
 /**
@@ -512,7 +523,7 @@ void MotionDecision::process()
                 if(0 < trigger_count && trigger_count < TRIGGER_COUNT_THRESHOLD){
                     recovery_mode(vel, false);
                     trigger_count++;
-                }else if(enable_recovery_mode && vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON){
+                }else if(enable_recovery_mode && ((vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON) || (odom.twist.twist.linear.x < 0.01 && fabs(odom.twist.twist.angular.z) < 0.01))){
                     std::cout << ")" << std::endl;
                     std::cout << "=== stuck recovery mode ===" << std::endl;
                     std::cout << "stuck_count" << stuck_count << std::endl;
