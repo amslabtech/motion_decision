@@ -43,7 +43,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   move_flag_ = false;
   joy_flag_ = false;
   intersection_flag_ = false;
-  enable_recovery_mode_ = false;
+  enable_recovery_mode_ = true;
   local_path_received_ = false;
   front_laser_received_ = true;
   rear_laser_received_ = true;
