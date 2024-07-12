@@ -1,18 +1,18 @@
 /**
  * @file motion_decision.cpp
- * @author AMSL
- * @brief C++ implementation for Motion Decision
+ * @author amsl
+ * @brief C++ implementation of motion decision
  */
 
 #include "motion_decision/motion_decision.h"
 
 /**
- * @brief Construct a new Motion Decision:: Motion Decision object.
+ * @class MotionDecision
+ * @brief Motion Decision Class
  */
 MotionDecision::MotionDecision()
     :private_nh("~")
 {
-    //subscriber
     local_path_sub = nh.subscribe("/local_path/cmd_vel",1, &MotionDecision::LocalPathCallback, this);
     joy_sub = nh.subscribe("/joy",1, &MotionDecision::JoyCallback, this);
     front_laser_sub = nh.subscribe("/front_laser/scan",1, &MotionDecision::FrontLaserCallback, this);
@@ -22,7 +22,6 @@ MotionDecision::MotionDecision()
     recovery_mode_flag_sub = nh.subscribe("/recovery_mode_flag", 1, &MotionDecision::RecoveryModeFlagCallback, this);
     odom_sub = nh.subscribe("/odom", 1, &MotionDecision::OdomCallback, this);
 
-    //publisher
     vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel",1,true);
     intersection_flag_pub = nh.advertise<std_msgs::Bool>("/intersection_flag",1,true);
 
@@ -60,8 +59,8 @@ MotionDecision::MotionDecision()
 }
 
 /**
- * @brief local path callback function.
- * @param [in] msg msg from local_path_sub
+ * @brief Local path callback function
+ * @param [in] msg Msg from local_path_sub
  */
 void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
 {
@@ -70,9 +69,9 @@ void MotionDecision::LocalPathCallback(const geometry_msgs::TwistConstPtr& msg)
 }
 
 /**
- * @brief front laser callback function.
- * Cache the closest valid sensor data and its index in front_min_range and front_min_idx respectively.
- * @param [in] msg msg from front_laser_sub
+ * @brief Front laser callback function
+ * @details Cache the closest valid sensor data and its index in front_min_range and front_min_idx respectively
+ * @param [in] msg Msg from front_laser_sub
  */
 void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
 {
@@ -93,9 +92,9 @@ void MotionDecision::FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& ms
 }
 
 /**
- * @brief rear laser callback function.
- * Cache the closest valid sensor data and its index in rear_min_range and rear_min_idx respectively.
- * @param [in] msg msg from rear_laser_sub
+ * @brief Rear laser callback function
+ * @details Cache the closest valid sensor data and its index in rear_min_range and rear_min_idx respectively
+ * @param [in] msg Msg from rear_laser_sub
  */
 void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg)
 {
@@ -116,8 +115,8 @@ void MotionDecision::RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg
 }
 
 /**
- * @brief recovery mode flag callback function.
- * @param [in] msg msg from recovery_mode_flag_sub
+ * @brief Recovery mode flag callback function
+ * @param [in] msg Msg from recovery_mode_flag_sub
  */
 void MotionDecision::RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr &msg)
 {
@@ -125,8 +124,8 @@ void MotionDecision::RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr &ms
 }
 
 /**
- * @brief odom callback function.
- * @param [in] msg msg from odom_sub
+ * @brief Odom callback function
+ * @param [in] msg Msg from odom_sub
  */
 void MotionDecision::OdomCallback(const nav_msgs::OdometryConstPtr &msg)
 {
@@ -134,10 +133,10 @@ void MotionDecision::OdomCallback(const nav_msgs::OdometryConstPtr &msg)
 }
 
 /**
- * @brief Calculate TTC.
- * @param [in] vel current velocity
- * @param [in] go_back direction of motion
- * @return float ttc result of TTC calculation
+ * @brief Calculate TTC (Time To Collision) function
+ * @param [in] vel Current velocity
+ * @param [in] go_back Direction of motion
+ * @return float TTC
  */
 float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
 {
@@ -183,9 +182,9 @@ float MotionDecision::CalcTTC(geometry_msgs::Twist vel, bool go_back)
 }
 
 /**
- * @brief rear laser callback function.
- * set flags by input from joy.
- * @param [in] msg msg from joy_sub
+ * @brief Rear laser callback function
+ * @details Set flags by input from joy
+ * @param [in] msg Msg from joy_sub
  */
 void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 {
@@ -219,8 +218,8 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
 }
 
 /**
- * @brief emergency stop flag callback function.
- * @param [in] msg msg from emergency_stop_flag_sub
+ * @brief Emergency stop flag callback function
+ * @param [in] msg Msg from emergency_stop_flag_sub
  */
 void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 {
@@ -228,10 +227,9 @@ void MotionDecision::EmergencyStopFlagCallback(const std_msgs::BoolConstPtr& msg
 }
 
 /**
- * @brief task stop flag callback function.
- * emergency stop when task stop flag is true.
- *
- * @param [in] msg msg from task_stop_flag_sub
+ * @brief Task stop flag callback function
+ * @details Emergency stop when task stop flag is true
+ * @param [in] msg Msg from task_stop_flag_sub
  */
 void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 {
@@ -250,9 +248,9 @@ void MotionDecision::TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg)
 }
 
 /**
- * @brief code for recovery mode. this function is unused now.
- * @param [out] cmd_vel velocity. overwritten to recovery mode velocity.
- * @param [in] go_back direction of motion
+ * @brief Code for recovery mode
+ * @param [out] cmd_vel Velocity
+ * @param [in] go_back Direction of motion
  */
 void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 {
@@ -369,7 +367,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist& cmd_vel, bool go_back)
 }
 
 /**
- * @brief process function
+ * @brief Process function
  */
 void MotionDecision::process()
 {
@@ -460,10 +458,7 @@ void MotionDecision::process()
 }
 
 /**
- * @brief main function
- * @param argc no info
- * @param argv no info
- * @return int no info
+ * @brief Main function
  */
 int main(int argc, char **argv)
 {
