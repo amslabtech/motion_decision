@@ -2,6 +2,7 @@
  * @file motion_decision.h
  * @author amsl
  * @brief C++ implementation of motion decision
+ * @copyright Copyright (c) 2024
  */
 
 #ifndef MOTION_DECISION_MOTION_DECISION_H
