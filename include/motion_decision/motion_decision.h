@@ -5,10 +5,8 @@
  */
 
 #include <ros/ros.h>
-#include <tf/tf.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
