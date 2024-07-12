@@ -5,7 +5,7 @@
   <description>The motion_decision package</description>
   <maintainer email="amsl@todo.todo">amsl</maintainer>
 
-  <license>TODO</license>
+  <license>BSD 3-Clause License</license>
 
   <buildtool_depend>catkin</buildtool_depend>
 
