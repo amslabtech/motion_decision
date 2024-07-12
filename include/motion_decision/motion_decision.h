@@ -1,7 +1,7 @@
 /**
- * @file motion_decision.cpp
+ * @file motion_decision.h
  * @author amsl
- * @brief C++ implementation for Motion Decision
+ * @brief C++ implementation of motion decision
  */
 
 #include <ros/ros.h>
@@ -36,7 +36,6 @@ class MotionDecision{
         ros::NodeHandle nh;
         ros::NodeHandle private_nh;
 
-        //subscriber
         ros::Subscriber local_path_sub;
         ros::Subscriber joy_sub;
         ros::Subscriber emergency_stop_flag_sub;
@@ -46,7 +45,6 @@ class MotionDecision{
         ros::Subscriber recovery_mode_flag_sub;
         ros::Subscriber odom_sub;
 
-        //publisher
         ros::Publisher vel_pub;
         ros::Publisher intersection_flag_pub;
 
