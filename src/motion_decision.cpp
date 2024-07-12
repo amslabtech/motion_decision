@@ -336,7 +336,7 @@ void MotionDecision::JoyCallback(const sensor_msgs::JoyConstPtr& msg)
     }
 */
 
-    if(joy.buttons[6]){
+    if(joy.buttons[4]){
         joy_flag = true;
     }else{
         joy_flag = false;
