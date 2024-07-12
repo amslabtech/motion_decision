@@ -1,12 +1,12 @@
 # motion_decision
 
-[![Build Status](https://travis-ci.org/amslabtech/motion_decision.svg?branch=master)](https://travis-ci.org/amslabtech/motion_decision)
+[![ci](https://github.com/amslabtech/motion_decision/workflows/ci/badge.svg)](https://github.com/amslabtech/motion_decision/actions)
 ![issue_opened](https://img.shields.io/github/issues/amslabtech/motion_decision.svg)
 ![issue_closed](https://img.shields.io/github/issues-closed/amslabtech/motion_decision.svg)
 
 ## Enviornment
-- Ubuntu 16.04 or 18.04
-- ROS Kinetic or Melodic
+- Ubuntu 20.04
+- ROS Noetic
 
 ## Published topics
 - /cmd_vel (geometry_msgs/Twist)
