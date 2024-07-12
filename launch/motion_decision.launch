@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="hz" default="20"/>
+    <arg name="hz" default="10"/>
     <arg name="max_speed" default="1.0"/>
     <arg name="max_yawrate" default="1.0"/>
     <arg name="vel_ratio" default="0.5"/>
