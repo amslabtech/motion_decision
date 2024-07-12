@@ -19,7 +19,6 @@ MotionDecision::MotionDecision()
     rear_laser_sub = nh.subscribe("/rear_laser/scan",1, &MotionDecision::RearLaserCallback, this);
     emergency_stop_flag_sub = nh.subscribe("/emergency_stop",1, &MotionDecision::EmergencyStopFlagCallback, this);
     task_stop_flag_sub = nh.subscribe("/task/stop",1, &MotionDecision::TaskStopFlagCallback, this);
-    local_goal_sub = nh.subscribe("/local_goal",1, &MotionDecision::LocalGoalCallback, this);
     recovery_mode_flag_sub = nh.subscribe("/recovery_mode_flag", 1, &MotionDecision::RecoveryModeFlagCallback, this);
     odom_sub = nh.subscribe("/odom", 1, &MotionDecision::OdomCallback, this);
 
@@ -30,8 +29,6 @@ MotionDecision::MotionDecision()
     private_nh.param("HZ", HZ, {20});
     private_nh.param("MAX_SPEED", MAX_SPEED, {1.0});
     private_nh.param("MAX_YAWRATE", MAX_YAWRATE, {1.0});
-    private_nh.param("VEL_RATIO", VEL_RATIO, {0.5});
-    private_nh.param("GOAL_DISTANCE", GOAL_DISTANCE, {0.6});
     private_nh.param("COLLISION_DISTANCE", COLLISION_DISTANCE, {0.4});
     private_nh.param("PREDICT_TIME", PREDICT_TIME, {1.0});
     private_nh.param("SAFETY_COLLISION_TIME", SAFETY_COLLISION_TIME, {0.5});
@@ -48,44 +45,18 @@ MotionDecision::MotionDecision()
     auto_flag = false;
     move_flag = false;
     joy_flag = false;
-    laser_flag = false;
     intersection_flag = false;
     enable_recovery_mode = false;
-    target_arrival = false;
     local_path_received = false;
     front_laser_received = true;
     rear_laser_received = true;
-    stop_count = 0;
     stuck_count = 0;
-    target_yaw = 0.0;
     front_min_range = -1.0;
     rear_min_range = -1.0;
     trigger_count = 0;
 
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
-}
-
-/**
- * @brief Local goal callback function.
- * @param [in] msg msg from local_goal_sub
- */
-void MotionDecision::LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr& msg)
-{
-    geometry_msgs::PoseStamped local_goal;
-    local_goal = *msg;
-    target_arrival = false;
-
-    // detect arrival at target
-    double x = local_goal.pose.position.x;
-    double y = local_goal.pose.position.y;
-    double dis = sqrt(x*x + y*y);
-    if(dis < GOAL_DISTANCE){
-        target_arrival = true;
-    }
-    tf::Quaternion quaternion;
-    tf::quaternionMsgToTF(local_goal.pose.orientation, quaternion);
-    target_yaw = tf::getYaw(quaternion);
 }
 
 /**

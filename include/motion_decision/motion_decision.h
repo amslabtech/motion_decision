@@ -29,7 +29,6 @@ class MotionDecision{
         void TaskStopFlagCallback(const std_msgs::BoolConstPtr& msg);
         void FrontLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
         void RearLaserCallback(const sensor_msgs::LaserScanConstPtr& msg);
-        void LocalGoalCallback(const geometry_msgs::PoseStampedConstPtr& msg);
         void RecoveryModeFlagCallback(const std_msgs::Bool::ConstPtr& msg);
         void OdomCallback(const nav_msgs::OdometryConstPtr &msg);
 
@@ -46,7 +45,6 @@ class MotionDecision{
         ros::Subscriber task_stop_flag_sub;
         ros::Subscriber front_laser_sub;
         ros::Subscriber rear_laser_sub;
-        ros::Subscriber local_goal_sub;
         ros::Subscriber recovery_mode_flag_sub;
         ros::Subscriber odom_sub;
 
@@ -64,9 +62,7 @@ class MotionDecision{
         bool joy_flag;
         bool intersection_flag;
         bool safety_mode_flag;
-        bool laser_flag;
         bool enable_recovery_mode;
-        bool target_arrival;
         bool local_path_received;
         bool front_laser_received;
         bool rear_laser_received;
@@ -80,20 +76,16 @@ class MotionDecision{
         int HZ;
         double MAX_SPEED;
         double MAX_YAWRATE;
-        double VEL_RATIO;
-        double GOAL_DISTANCE;
         double COLLISION_DISTANCE;
         double DT;
         double PREDICT_TIME;
         double SAFETY_COLLISION_TIME;
         int RECOVERY_MODE_THRESHOLD;
         int TRIGGER_COUNT_THRESHOLD;
-        int stop_count;
         int stuck_count;
         int trigger_count;
         int front_min_idx;
         int rear_min_idx;
-        double target_yaw;
 
         std::string STOP_SOUND_PATH;
         std::string RECOVERY_SOUND_PATH;
