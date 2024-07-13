@@ -141,7 +141,7 @@ private:
    * @param [out] cmd_vel Velocity
    * @param [in] go_back Direction of motion
    */
-  void recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back);
+  void recovery_mode(geometry_msgs::Twist &cmd_vel);
 
   /**
    * @brief Calculate TTC (Time To Collision) function
@@ -149,7 +149,7 @@ private:
    * @param [in] go_back Direction of motion
    * @return float TTC
    */
-  float calc_ttc(geometry_msgs::Twist vel, bool go_back);
+  float calc_ttc(geometry_msgs::Twist vel);
 
   Params params_;
   Flags flags_;
@@ -171,10 +171,9 @@ private:
 
   geometry_msgs::Twist cmd_vel_;
   geometry_msgs::Twist joy_vel_;
+  geometry_msgs::Twist odom_vel_;
   sensor_msgs::LaserScan front_laser_;
   sensor_msgs::LaserScan rear_laser_;
-  sensor_msgs::Joy joy_;
-  nav_msgs::Odometry odom_;
 };
 
 #endif  // MOTION_DECISION_MOTION_DECISION_H

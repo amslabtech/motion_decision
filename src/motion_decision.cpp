@@ -71,28 +71,27 @@ void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &
 
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
 {
-  joy_ = *msg;
-  if (joy_.buttons[3])
+  if (msg->buttons[3])
   { // square button
     flags_.auto_mode = false;
   }
-  else if (joy_.buttons[2])
+  else if (msg->buttons[2])
   { // triangle button
     flags_.auto_mode = true;
   }
 
-  if (joy_.buttons[0])
+  if (msg->buttons[0])
   { // cross button
     flags_.move_mode = false;
   }
-  else if (joy_.buttons[1])
+  else if (msg->buttons[1])
   { // circle button
     flags_.move_mode = true;
   }
-  joy_vel_.linear.x = joy_.axes[1] * params_.max_speed;
-  joy_vel_.angular.z = joy_.axes[0] * params_.max_yawrate;
+  joy_vel_.linear.x = msg->axes[1] * params_.max_speed;
+  joy_vel_.angular.z = msg->axes[0] * params_.max_yawrate;
 
-  if (joy_.buttons[4])
+  if (msg->buttons[4])
   {
     flags_.joy = true;
   }
@@ -100,7 +99,7 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
   {
     flags_.joy = false;
   }
-  if(joy_.buttons[11] && joy_.buttons[12])
+  if(msg->buttons[11] && msg->buttons[12])
   {
     flags_.intersection = true;
   }
@@ -116,7 +115,7 @@ void MotionDecision::local_path_velocity_callback(const geometry_msgs::TwistCons
   flags_.local_path_received = true;
 }
 
-void MotionDecision::odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom_ = *msg; }
+void MotionDecision::odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom_vel_ = msg->twist.twist; }
 
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
@@ -183,12 +182,12 @@ void MotionDecision::process(void)
         vel = cmd_vel_;
         if (0 < counters_.trigger && counters_.trigger < params_.trigger_count_threshold)
         {
-          recovery_mode(vel, false);
+          recovery_mode(vel);
           counters_.trigger++;
         }
         else if (
             flags_.enable_recovery_mode && ((vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON) ||
-                                      (odom_.twist.twist.linear.x < 0.01 && fabs(odom_.twist.twist.angular.z) < 0.01)))
+                                      (odom_vel_.linear.x < 0.01 && fabs(odom_vel_.angular.z) < 0.01)))
         {
           std::cout << ")" << std::endl;
           std::cout << "stuck_count : " << counters_.stuck << std::endl;
@@ -198,7 +197,7 @@ void MotionDecision::process(void)
           }
           else
           {
-            recovery_mode(vel, false);
+            recovery_mode(vel);
             counters_.trigger++;
           }
         }
@@ -279,7 +278,7 @@ void MotionDecision::process(void)
   }
 }
 
-void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
+void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
 {
   std::cout << "=== recovery mode ===" << std::endl;
   if (!flags_.front_laser_received || !flags_.rear_laser_received)
@@ -298,7 +297,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
   double max_yawrate = 0.0;
   double max_ttc = 0.0;
   bool reverse_flag = false;
-  if (!go_back)
+  if (0.0 <= cmd_vel.linear.x)
   {
     // when moving forwards
     // calculate ttc when if go backwards
@@ -311,7 +310,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
         vel.angular.z = yawrate;
         // carefull to modify param true
         // go_back variable is false but robot moving backwards virtuary so needed laser data is rear's
-        double ttc = calc_ttc(vel, true);
+        double ttc = calc_ttc(vel);
         if (ttc > max_ttc)
         {
           max_velocity = velocity;
@@ -327,7 +326,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
           double angle = (2.0 * laser_info_.front_min_idx / front_laser_.ranges.size() - 1.0) * (front_laser_.angle_max);
           double angle_diff_a = fabs(angle - atan2(max_y, max_x));
           double angle_diff_b = fabs(angle - atan2(y, x));
-          if (M_PI / 2.0 <= fabs(angle) && angle_diff_a < angle_diff_b && calc_ttc(vel, false) > params_.safety_collision_time)
+          if (M_PI / 2.0 <= fabs(angle) && angle_diff_a < angle_diff_b && calc_ttc(vel) > params_.safety_collision_time)
           {
             max_velocity = velocity;
             max_y = y;
@@ -376,7 +375,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
         vel.angular.z = yawrate;
         // carefull to modify param true
         // go_back variable is true but robot moving forwards virtuary so needed laser data is front's
-        double ttc = calc_ttc(vel, false);
+        double ttc = calc_ttc(vel);
         if (ttc > max_ttc)
         {
           max_velocity = velocity;
@@ -423,11 +422,11 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
   }
 }
 
-float MotionDecision::calc_ttc(geometry_msgs::Twist vel, bool go_back)
+float MotionDecision::calc_ttc(geometry_msgs::Twist vel)
 {
   // select laser data by direction of motion
   sensor_msgs::LaserScan laser;
-  if (!go_back)
+  if (0.0 <= vel.linear.x)
   {
     laser = front_laser_;
   }
