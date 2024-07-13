@@ -57,23 +57,10 @@ void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &
 
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
 {
-  if (msg->buttons[3])
-  { // square button
-    flags_.auto_mode = false;
-  }
-  else if (msg->buttons[2])
-  { // triangle button
-    flags_.auto_mode = true;
-  }
+  mode_ = select_mode(msg, mode_);
+  flags_.auto_mode = (mode_.second == "auto");
+  flags_.move_mode = (mode_.first == "move");
 
-  if (msg->buttons[0])
-  { // cross button
-    flags_.move_mode = false;
-  }
-  else if (msg->buttons[1])
-  { // circle button
-    flags_.move_mode = true;
-  }
   joy_vel_.linear.x = msg->axes[1] * params_.max_speed;
   joy_vel_.angular.z = msg->axes[0] * params_.max_yawrate;
 
@@ -147,6 +134,24 @@ void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, int &
       min_idx = i;
     }
   }
+}
+
+std::pair<std::string, std::string>
+MotionDecision::select_mode(const sensor_msgs::Joy::ConstPtr &joy, const std::pair<std::string, std::string> &prev_mode)
+{
+  std::string first_mode = prev_mode.first;
+  std::string second_mode = prev_mode.second;
+
+  if (joy->buttons[0] == 1)  // cross button
+    first_mode = "stop";
+  if (joy->buttons[1] == 1)  // circle button
+    first_mode = "move";
+  if (joy->buttons[2] == 1)  // triangle button
+    second_mode = "auto";
+  if (joy->buttons[3] == 1)  // square button
+    second_mode = "manual";
+
+  return std::make_pair(first_mode, second_mode);
 }
 
 void MotionDecision::process(void)

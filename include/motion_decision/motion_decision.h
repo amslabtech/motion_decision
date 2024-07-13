@@ -145,6 +145,15 @@ private:
   void search_min_range(const sensor_msgs::LaserScan &laser, int &min_idx, float &min_range);
 
   /**
+   * @brief Publish velocity function
+   * @param [in] msg Msg of Joy
+   * @param [in] mode Current mode
+   * @return std::pair<std::string, std::string> New mode
+   */
+  std::pair<std::string, std::string>
+  select_mode(const sensor_msgs::Joy::ConstPtr &msg, const std::pair<std::string, std::string> &mode);
+
+  /**
    * @brief Recovery mode function
    * @param [out] cmd_vel Velocity
    * @param [in] go_back Direction of motion
@@ -163,6 +172,9 @@ private:
   Flags flags_;
   Counters counters_;
   LaserInfo laser_info_;
+
+  // motiom mode {first: <stop, move>, second: <manual, auto>}
+  std::pair<std::string, std::string> mode_ = std::make_pair("stop", "manual");
 
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
