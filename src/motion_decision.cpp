@@ -59,12 +59,6 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
 {
   mode_ = select_mode(msg, mode_);
 
-  if (mode_.second == "manual")
-  {
-    counters_.stuck = 0;
-    counters_.trigger = 0;
-  }
-
   if (mode_.first == "move" && mode_.second == "manual")
   {
     cmd_vel_.linear.x = msg->buttons[4] ? msg->axes[1] * params_.max_speed : 0.0;
@@ -179,6 +173,12 @@ void MotionDecision::process(void)
         counters_.stuck = 0;
         counters_.trigger = 0;
       }
+    }
+    else if (mode_.second == "manual")
+    {
+      // reset counters
+      counters_.stuck = 0;
+      counters_.trigger = 0;
     }
 
     publish_cmd_vel(cmd_vel_);
