@@ -58,33 +58,47 @@ void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
 {
   mode_ = select_mode(msg, mode_);
-  flags_.auto_mode = (mode_.second == "auto");
-  flags_.move_mode = (mode_.first == "move");
-
-  joy_vel_.linear.x = msg->axes[1] * params_.max_speed;
-  joy_vel_.angular.z = msg->axes[0] * params_.max_yawrate;
-
-  if (msg->buttons[4])
+  if (mode_.second == "manual")
   {
-    flags_.joy = true;
+    counters_.stuck = 0;
+    counters_.trigger = 0;
   }
-  else
+  if (mode_.first == "move" && mode_.second == "manual" && msg->buttons[4])
   {
-    flags_.joy = false;
+    cmd_vel_.linear.x = msg->axes[1] * params_.max_speed;
+    cmd_vel_.angular.z = msg->axes[0] * params_.max_yawrate;
   }
   if(msg->buttons[11] && msg->buttons[12])
   {
-    flags_.intersection = true;
+    std_msgs::Bool flag;
+    flag.data = true;
+    intersection_flag_pub_.publish(flag);
+    std::cout << "=========intersection=============" << std::endl;
   }
-  else
-  {
-    flags_.intersection = false;
-  }
+
+    // if (vel.linear.x > params_.max_speed)
+    // {
+    //   vel.linear.x = params_.max_speed;
+    // }
+    // else if (vel.linear.x < -params_.max_speed)
+    // {
+    //   vel.linear.x = params_.max_speed;
+    // }
+    // if (vel.angular.z > params_.max_yawrate)
+    // {
+    //   vel.angular.z = params_.max_yawrate;
+    // }
+    // else if (vel.angular.z < -params_.max_yawrate)
+    // {
+    //   vel.angular.z = -params_.max_yawrate;
+    // }
+
 }
 
 void MotionDecision::local_path_velocity_callback(const geometry_msgs::TwistConstPtr &msg)
 {
-  cmd_vel_ = *msg;
+  if (mode_.first == "move" && mode_.second == "auto")
+    cmd_vel_ = *msg;
   flags_.local_path_received = true;
 }
 
@@ -159,96 +173,39 @@ void MotionDecision::process(void)
   ros::Rate loop_rate(params_.hz);
   while (ros::ok())
   {
-    geometry_msgs::Twist vel;
-    if (flags_.move_mode)
+    // Detect stuck and recover for a certain period of time
+    if (mode_.first == "move" && mode_.second == "auto" && flags_.enable_recovery_mode)
     {
-      if (flags_.auto_mode)
+      if (0 < counters_.trigger && counters_.trigger < params_.trigger_count_threshold)
       {
-        vel = cmd_vel_;
-        if (0 < counters_.trigger && counters_.trigger < params_.trigger_count_threshold)
-        {
-          recovery_mode(vel);
-          counters_.trigger++;
-        }
-        else if (
-            flags_.enable_recovery_mode && ((vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON) ||
-                                      (odom_vel_.linear.x < 0.01 && fabs(odom_vel_.angular.z) < 0.01)))
-        {
-          if (counters_.stuck < params_.recovery_mode_threshold)
-          {
-            counters_.stuck++;
-          }
-          else
-          {
-            recovery_mode(vel);
-            counters_.trigger++;
-          }
-        }
+        recovery_mode(cmd_vel_);
+      }
+      else if (((cmd_vel_.linear.x < DBL_EPSILON && fabs(cmd_vel_.angular.z) < DBL_EPSILON) ||
+       (odom_vel_.linear.x < 0.01 && fabs(odom_vel_.angular.z) < 0.01)))
+      {
+        if (counters_.stuck < params_.recovery_mode_threshold)
+          counters_.stuck++;
         else
-        {
-          counters_.stuck = 0;
-          counters_.trigger = 0;
-        }
-        flags_.front_laser_received = false;
-        flags_.rear_laser_received = false;
+          counters_.trigger++;
       }
       else
       {
-        if (flags_.joy)
-        {
-          vel = joy_vel_;
-        }
-        else
-        {
-          vel.linear.x = 0.0;
-          vel.angular.z = 0.0;
-        }
-
+        // reset counters when robot moves
         counters_.stuck = 0;
         counters_.trigger = 0;
       }
-    }
-    else
-    {
-      vel.linear.x = 0.0;
-      vel.angular.z = 0.0;
 
-      counters_.stuck = 0;
-      counters_.trigger = 0;
+      if (!flags_.front_laser_received || !flags_.rear_laser_received)
+        cmd_vel_ = geometry_msgs::Twist();
+
+      flags_.front_laser_received = false;
+      flags_.rear_laser_received = false;
     }
+
     if (flags_.emergency_stop)
-    {
-      std::cout << "emergency stop" << std::endl;
-      vel.linear.x = 0.0;
-      vel.angular.z = 0.0;
-    }
-    if (flags_.intersection)
-    {
-      std_msgs::Bool flag;
-      flag.data = true;
-      intersection_flag_pub_.publish(flag);
-      std::cout << "=========intersection=============" << std::endl;
-    }
-
-    if (vel.linear.x > params_.max_speed)
-    {
-      vel.linear.x = params_.max_speed;
-    }
-    else if (vel.linear.x < -params_.max_speed)
-    {
-      vel.linear.x = params_.max_speed;
-    }
-    if (vel.angular.z > params_.max_yawrate)
-    {
-      vel.angular.z = params_.max_yawrate;
-    }
-    else if (vel.angular.z < -params_.max_yawrate)
-    {
-      vel.angular.z = -params_.max_yawrate;
-    }
-
-    print_status(vel);
-    velocity_pub_.publish(vel);
+      cmd_vel_ = geometry_msgs::Twist();
+    velocity_pub_.publish(cmd_vel_);
+    print_status(cmd_vel_);
 
     laser_info_.front_min_range = -1.0;
     laser_info_.rear_min_range = -1.0;
@@ -260,13 +217,6 @@ void MotionDecision::process(void)
 
 void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
 {
-  if (!flags_.front_laser_received || !flags_.rear_laser_received)
-  {
-    cmd_vel.linear.x = 0.0;
-    cmd_vel.angular.z = 0.0;
-    return;
-  }
-
   std::cout << "#####################" << std::endl;
   std::cout << "### recovery mode ###" << std::endl;
   std::cout << "#####################" << std::endl;
@@ -403,6 +353,8 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
       }
     }
   }
+
+  counters_.trigger++;
 }
 
 float MotionDecision::calc_ttc(geometry_msgs::Twist vel)
@@ -460,14 +412,16 @@ float MotionDecision::calc_ttc(geometry_msgs::Twist vel)
 void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
 {
   std::cout << "=== " << mode_.second << " (" << mode_.first << ") ===" << std::endl;
+  if (flags_.emergency_stop)
+    std::cout << "emergency stop" << std::endl;
   std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
   std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
   std::cout << "trigger count   : " << counters_.trigger << std::endl;
   if (0 < counters_.stuck)
-    std::cout << "stuck_count : " << counters_.stuck << std::endl;
+    std::cout << "stuck count : " << counters_.stuck << std::endl;
   if (mode_.first == "move")
   {
-    std::cout << "cmd_vel:" << std::endl;
+    std::cout << "cmd vel :" << std::endl;
     std::cout << "  linear.x  : " << cmd_vel.linear.x << std::endl;
     std::cout << "  angular.z : " << cmd_vel.angular.z << std::endl;
   }
