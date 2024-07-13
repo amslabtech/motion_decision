@@ -335,55 +335,33 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
   counters_.trigger++;
 }
 
-float MotionDecision::calc_ttc(geometry_msgs::Twist vel)
+double MotionDecision::calc_ttc(const geometry_msgs::Twist &cmd_vel)
 {
   // select laser data by direction of motion
-  sensor_msgs::LaserScan laser;
-  if (0.0 <= vel.linear.x)
-  {
-    laser = front_laser_;
-  }
-  else
-  {
-    laser = rear_laser_;
-  }
+  const sensor_msgs::LaserScan laser = 0.0 <= cmd_vel.linear.x ? front_laser_ : rear_laser_;
 
-  // calculate TTC
+  // calculate TTC (Time To Collision)
   double ttc = params_.predict_time;
-  int i = 0;
-  for (auto range : laser.ranges)
+  for (size_t i = 0; i < laser.ranges.size(); i++)
   {
-    // ignore invalid laser data
-    if (range < 0.1)
-    {
-      continue;
-    }
-    double x = 0;
-    double y = 0;
-    double yaw = 0;
-    double obs_x, obs_y, angle;
-    angle = (2.0 * i / laser.ranges.size() - 1.0) * (laser.angle_max);
-    obs_x = range * cos(angle);
-    obs_y = range * sin(angle);
+    const double angle = (2.0 * i / laser.ranges.size() - 1.0) * laser.angle_max;
+    const double obs_x = laser.ranges[i] * cos(angle);
+    const double obs_y = laser.ranges[i] * sin(angle);
 
+    double x(0.0), y(0.0), yaw(0.0);
     for (double time = params_.dt; time < params_.predict_time; time += params_.dt)
     {
-      yaw += vel.angular.z * params_.dt;
-      x += fabs(vel.linear.x) * cos(yaw) * params_.dt;
-
-      y += fabs(vel.linear.x) * sin(yaw) * params_.dt;
-      double tmp_range = sqrt((x - obs_x) * (x - obs_x) + (y - obs_y) * (y - obs_y));
-      if (tmp_range < params_.collision_distance)
+      yaw += cmd_vel.angular.z * params_.dt;
+      x += fabs(cmd_vel.linear.x) * cos(yaw) * params_.dt;
+      y += fabs(cmd_vel.linear.x) * sin(yaw) * params_.dt;
+      if (hypot(x - obs_x, y - obs_y) < params_.collision_distance && time < ttc)
       {
-        if (time < ttc)
-        {
-          ttc = time;
-          break;
-        }
+        ttc = time;
+        break;
       }
     }
-    i++;
   }
+
   return ttc;
 }
 

@@ -164,9 +164,9 @@ private:
    * @brief Calculate TTC (Time To Collision) function
    * @param [in] vel Current velocity
    * @param [in] go_back Direction of motion
-   * @return float TTC
+   * @return double TTC
    */
-  float calc_ttc(geometry_msgs::Twist vel);
+  double calc_ttc(const geometry_msgs::Twist &cmd_vel);
 
   /**
    * @brief Publish velocity function
