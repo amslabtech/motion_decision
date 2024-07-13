@@ -169,6 +169,12 @@ private:
   float calc_ttc(geometry_msgs::Twist vel);
 
   /**
+   * @brief Publish velocity function
+   * @param [in] cmd_vel Velocity
+   */
+  void publish_cmd_vel(geometry_msgs::Twist cmd_vel);
+
+  /**
    * @brief Print status function
    * @param [in] cmd_vel Velocity
    */

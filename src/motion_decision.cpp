@@ -58,16 +58,19 @@ void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
 {
   mode_ = select_mode(msg, mode_);
+
   if (mode_.second == "manual")
   {
     counters_.stuck = 0;
     counters_.trigger = 0;
   }
+
   if (mode_.first == "move" && mode_.second == "manual" && msg->buttons[4])
   {
     cmd_vel_.linear.x = msg->axes[1] * params_.max_speed;
     cmd_vel_.angular.z = msg->axes[0] * params_.max_yawrate;
   }
+
   if(msg->buttons[11] && msg->buttons[12])
   {
     std_msgs::Bool flag;
@@ -75,24 +78,6 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
     intersection_flag_pub_.publish(flag);
     std::cout << "=========intersection=============" << std::endl;
   }
-
-    // if (vel.linear.x > params_.max_speed)
-    // {
-    //   vel.linear.x = params_.max_speed;
-    // }
-    // else if (vel.linear.x < -params_.max_speed)
-    // {
-    //   vel.linear.x = params_.max_speed;
-    // }
-    // if (vel.angular.z > params_.max_yawrate)
-    // {
-    //   vel.angular.z = params_.max_yawrate;
-    // }
-    // else if (vel.angular.z < -params_.max_yawrate)
-    // {
-    //   vel.angular.z = -params_.max_yawrate;
-    // }
-
 }
 
 void MotionDecision::local_path_velocity_callback(const geometry_msgs::TwistConstPtr &msg)
@@ -194,21 +179,15 @@ void MotionDecision::process(void)
         counters_.stuck = 0;
         counters_.trigger = 0;
       }
-
-      if (!flags_.front_laser_received || !flags_.rear_laser_received)
-        cmd_vel_ = geometry_msgs::Twist();
-
-      flags_.front_laser_received = false;
-      flags_.rear_laser_received = false;
     }
 
-    if (flags_.emergency_stop)
-      cmd_vel_ = geometry_msgs::Twist();
-    velocity_pub_.publish(cmd_vel_);
+    publish_cmd_vel(cmd_vel_);
     print_status(cmd_vel_);
 
     laser_info_.front_min_range = -1.0;
     laser_info_.rear_min_range = -1.0;
+    flags_.front_laser_received = false;
+    flags_.rear_laser_received = false;
 
     loop_rate.sleep();
     ros::spinOnce();
@@ -407,6 +386,19 @@ float MotionDecision::calc_ttc(geometry_msgs::Twist vel)
     i++;
   }
   return ttc;
+}
+
+void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
+{
+  if (!flags_.front_laser_received || !flags_.rear_laser_received || flags_.emergency_stop)
+  {
+    velocity_pub_.publish(geometry_msgs::Twist());
+    return;
+  }
+
+  cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, params_.max_speed) : std::max(cmd_vel.linear.x, -params_.max_speed);
+  cmd_vel.angular.z = 0.0 < cmd_vel.angular.z ? std::min(cmd_vel.angular.z, params_.max_yawrate) : std::max(cmd_vel.angular.z, -params_.max_yawrate);
+  velocity_pub_.publish(cmd_vel);
 }
 
 void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
