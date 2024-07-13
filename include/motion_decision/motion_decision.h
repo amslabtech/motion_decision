@@ -16,6 +16,51 @@
 #include <std_msgs/Bool.h>
 #include <string>
 
+struct Params
+{
+  int hz;
+  int recovery_mode_threshold;
+  int trigger_count_threshold;
+  double max_speed;
+  double max_yawrate;
+  double dt;
+  double predict_time;
+  double collision_distance;
+  double safety_collision_time;
+  std::string stop_sound_path;
+  std::string recovery_sound_path;
+  std::string task_stop_sound_path;
+};
+
+struct Flags
+{
+  bool emergency_stop = false;
+  bool task_stop = false;
+  bool auto_mode = false;
+  bool move_mode = false;
+  bool joy = false;
+  bool intersection = false;
+  bool safety_mode = false;
+  bool local_path_received = false;
+  bool front_laser_received = false;
+  bool rear_laser_received = false;
+  bool enable_recovery_mode = true;
+};
+
+struct Counters
+{
+  int stuck = 0;
+  int trigger = 0;
+};
+
+struct LaserInfo
+{
+  int front_min_idx = 0;
+  int rear_min_idx = 0;
+  float front_min_range = -1.0;
+  float rear_min_range = -1.0;
+};
+
 /**
  * @class MotionDecision
  * @brief Motion Decision Class
@@ -101,36 +146,10 @@ private:
    */
   float calc_ttc(geometry_msgs::Twist vel, bool go_back);
 
-  int HZ;
-  int RECOVERY_MODE_THRESHOLD;
-  int TRIGGER_COUNT_THRESHOLD;
-  double MAX_SPEED;
-  double MAX_YAWRATE;
-  double DT;
-  double PREDICT_TIME;
-  double COLLISION_DISTANCE;
-  double SAFETY_COLLISION_TIME;
-  std::string STOP_SOUND_PATH;
-  std::string RECOVERY_SOUND_PATH;
-  std::string TASK_STOP_SOUND_PATH;
-
-  bool emergency_stop_flag_;
-  bool task_stop_flag_;
-  bool auto_flag_;
-  bool move_flag_;
-  bool joy_flag_;
-  bool intersection_flag_;
-  bool safety_mode_flag_;
-  bool local_path_received_;
-  bool front_laser_received_;
-  bool rear_laser_received_;
-  bool enable_recovery_mode_;
-  int stuck_count_;
-  int trigger_count_;
-  int front_min_idx_;
-  int rear_min_idx_;
-  float front_min_range_;
-  float rear_min_range_;
+  Params params_;
+  Flags flags_;
+  Counters counters_;
+  LaserInfo laser_info_;
 
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;

@@ -24,60 +24,44 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   recovery_mode_flag_sub_ = nh_.subscribe("/recovery_mode_flag", 1, &MotionDecision::recovery_mode_flag_callback, this);
   task_stop_flag_sub_ = nh_.subscribe("/task/stop", 1, &MotionDecision::task_stop_flag_callback, this);
 
-  private_nh_.param<int>("HZ", HZ, {20});
-  private_nh_.param<int>("RECOVERY_MODE_THRESHOLD", RECOVERY_MODE_THRESHOLD, {60});
-  private_nh_.param<int>("TRIGGER_COUNT_THRESHOLD", TRIGGER_COUNT_THRESHOLD, {2});
-  private_nh_.param<double>("MAX_SPEED", MAX_SPEED, {1.0});
-  private_nh_.param<double>("MAX_YAWRATE", MAX_YAWRATE, {1.0});
-  private_nh_.param<double>("DT", DT, {0.1});
-  private_nh_.param<double>("PREDICT_TIME", PREDICT_TIME, {1.0});
-  private_nh_.param<double>("COLLISION_DISTANCE", COLLISION_DISTANCE, {0.4});
-  private_nh_.param<double>("SAFETY_COLLISION_TIME", SAFETY_COLLISION_TIME, {0.5});
-  private_nh_.param<std::string>("STOP_SOUND_PATH", STOP_SOUND_PATH, std::string(""));
-  private_nh_.param<std::string>("RECOVERY_SOUND_PATH", RECOVERY_SOUND_PATH, std::string(""));
-  private_nh_.param<std::string>("TASK_STOP_SOUND_PATH", TASK_STOP_SOUND_PATH, std::string(""));
-
-  emergency_stop_flag_ = false;
-  task_stop_flag_ = false;
-  safety_mode_flag_ = false;
-  auto_flag_ = false;
-  move_flag_ = false;
-  joy_flag_ = false;
-  intersection_flag_ = false;
-  enable_recovery_mode_ = true;
-  local_path_received_ = false;
-  front_laser_received_ = true;
-  rear_laser_received_ = true;
-  stuck_count_ = 0;
-  front_min_range_ = -1.0;
-  rear_min_range_ = -1.0;
-  trigger_count_ = 0;
+  private_nh_.param<int>("hz", params_.hz, 20);
+  private_nh_.param<int>("recovery_mode_threshold", params_.recovery_mode_threshold, 60);
+  private_nh_.param<int>("trigger_count_threshold", params_.trigger_count_threshold, 2);
+  private_nh_.param<double>("max_speed", params_.max_speed, 1.0);
+  private_nh_.param<double>("max_yawrate", params_.max_yawrate, 1.0);
+  private_nh_.param<double>("dt", params_.dt, 0.1);
+  private_nh_.param<double>("predict_time", params_.predict_time, 1.0);
+  private_nh_.param<double>("collision_distance", params_.collision_distance, 0.4);
+  private_nh_.param<double>("safety_collision_time", params_.safety_collision_time, 0.5);
+  private_nh_.param<std::string>("stop_sound_path", params_.stop_sound_path, std::string(""));
+  private_nh_.param<std::string>("recovery_sound_path", params_.recovery_sound_path, std::string(""));
+  private_nh_.param<std::string>("task_stop_sound_path", params_.task_stop_sound_path, std::string(""));
 }
 
 void MotionDecision::emergency_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
 {
-  emergency_stop_flag_ = msg->data;
+  flags_.emergency_stop = msg->data;
 }
 
 void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   front_laser_ = *msg;
-  front_min_range_ = front_laser_.range_max;
-  front_min_idx_ = 0;
+  laser_info_.front_min_range = front_laser_.range_max;
+  laser_info_.front_min_idx = 0;
   int count = 0;
   for (auto range : front_laser_.ranges)
   {
-    if (range < front_min_range_)
+    if (range < laser_info_.front_min_range)
     {
       if (range > 0.1)
       {
-        front_min_range_ = range;
-        front_min_idx_ = count;
+        laser_info_.front_min_range = range;
+        laser_info_.front_min_idx = count;
       }
     }
     count++;
   }
-  front_laser_received_ = true;
+  flags_.front_laser_received = true;
 }
 
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
@@ -85,23 +69,23 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
   joy_ = *msg;
   if (joy_.buttons[3])
   { // square button
-    auto_flag_ = false;
+    flags_.auto_mode = false;
   }
   else if (joy_.buttons[2])
   { // triangle button
-    auto_flag_ = true;
+    flags_.auto_mode = true;
   }
 
   if (joy_.buttons[0])
   { // cross button
-    move_flag_ = false;
+    flags_.move_mode = false;
   }
   else if (joy_.buttons[1])
   { // circle button
-    move_flag_ = true;
+    flags_.move_mode = true;
   }
-  joy_vel_.linear.x = joy_.axes[1] * MAX_SPEED;
-  joy_vel_.angular.z = joy_.axes[0] * MAX_YAWRATE;
+  joy_vel_.linear.x = joy_.axes[1] * params_.max_speed;
+  joy_vel_.angular.z = joy_.axes[0] * params_.max_yawrate;
   /*
       if(joy.buttons[5]){
           intersection_flag = true;
@@ -112,18 +96,18 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
 
   if (joy_.buttons[4])
   {
-    joy_flag_ = true;
+    flags_.joy = true;
   }
   else
   {
-    joy_flag_ = false;
+    flags_.joy = false;
   }
 }
 
 void MotionDecision::local_path_velocity_callback(const geometry_msgs::TwistConstPtr &msg)
 {
   cmd_vel_ = *msg;
-  local_path_received_ = true;
+  flags_.local_path_received = true;
 }
 
 void MotionDecision::odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom_ = *msg; }
@@ -131,27 +115,27 @@ void MotionDecision::odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   rear_laser_ = *msg;
-  rear_min_range_ = rear_laser_.range_max;
-  rear_min_idx_ = 0;
+  laser_info_.rear_min_range = rear_laser_.range_max;
+  laser_info_.rear_min_idx = 0;
   int count = 0;
   for (auto range : rear_laser_.ranges)
   {
-    if (range < rear_min_range_)
+    if (range < laser_info_.rear_min_range)
     {
       if (range > 0.1)
       {
-        rear_min_range_ = range;
-        rear_min_idx_ = count;
+        laser_info_.rear_min_range = range;
+        laser_info_.rear_min_idx = count;
       }
     }
     count++;
   }
-  rear_laser_received_ = true;
+  flags_.rear_laser_received = true;
 }
 
 void MotionDecision::recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg)
 {
-  enable_recovery_mode_ = msg->data;
+  flags_.enable_recovery_mode = msg->data;
 }
 
 void MotionDecision::task_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
@@ -160,70 +144,70 @@ void MotionDecision::task_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
   if (flag.data)
   {
     std::cout << "========= task stop =========" << std::endl;
-    if (TASK_STOP_SOUND_PATH != "")
+    if (params_.task_stop_sound_path != "")
     {
-      std::string sound_command = "aplay " + TASK_STOP_SOUND_PATH + " &";
+      std::string sound_command = "aplay " + params_.task_stop_sound_path + " &";
       system(sound_command.c_str());
       system(sound_command.c_str());
     }
-    move_flag_ = false;
+    flags_.move_mode = false;
   }
   else
   {
-    move_flag_ = true;
+    flags_.move_mode = true;
   }
 }
 
 void MotionDecision::process(void)
 {
-  ros::Rate loop_rate(HZ);
+  ros::Rate loop_rate(params_.hz);
   while (ros::ok())
   {
     geometry_msgs::Twist vel;
     std::cout << "==== motion decision ====" << std::endl;
-    std::cout << "min front laser : " << front_min_range_ << std::endl;
-    std::cout << "min rear laser  : " << rear_min_range_ << std::endl;
-    std::cout << "trigger count   : " << trigger_count_ << std::endl;
-    if (move_flag_)
+    std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
+    std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
+    std::cout << "trigger count   : " << counters_.trigger << std::endl;
+    if (flags_.move_mode)
     {
       std::cout << "move : (";
-      if (auto_flag_)
+      if (flags_.auto_mode)
       {
         std::cout << "auto";
         vel = cmd_vel_;
-        if (0 < trigger_count_ && trigger_count_ < TRIGGER_COUNT_THRESHOLD)
+        if (0 < counters_.trigger && counters_.trigger < params_.trigger_count_threshold)
         {
           recovery_mode(vel, false);
-          trigger_count_++;
+          counters_.trigger++;
         }
         else if (
-            enable_recovery_mode_ && ((vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON) ||
+            flags_.enable_recovery_mode && ((vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON) ||
                                       (odom_.twist.twist.linear.x < 0.01 && fabs(odom_.twist.twist.angular.z) < 0.01)))
         {
           std::cout << ")" << std::endl;
-          std::cout << "stuck_count : " << stuck_count_ << std::endl;
-          if (stuck_count_ < RECOVERY_MODE_THRESHOLD)
+          std::cout << "stuck_count : " << counters_.stuck << std::endl;
+          if (counters_.stuck < params_.recovery_mode_threshold)
           {
-            stuck_count_++;
+            counters_.stuck++;
           }
           else
           {
             recovery_mode(vel, false);
-            trigger_count_++;
+            counters_.trigger++;
           }
         }
         else
         {
-          stuck_count_ = 0;
-          trigger_count_ = 0;
+          counters_.stuck = 0;
+          counters_.trigger = 0;
         }
-        front_laser_received_ = false;
-        rear_laser_received_ = false;
+        flags_.front_laser_received = false;
+        flags_.rear_laser_received = false;
       }
       else
       {
         std::cout << "manual";
-        if (joy_flag_)
+        if (flags_.joy)
         {
           vel = joy_vel_;
         }
@@ -233,28 +217,28 @@ void MotionDecision::process(void)
           vel.angular.z = 0.0;
         }
 
-        stuck_count_ = 0;
-        trigger_count_ = 0;
+        counters_.stuck = 0;
+        counters_.trigger = 0;
       }
       std::cout << ")" << std::endl;
       std::cout << vel << std::endl;
     }
     else
     {
-      std::cout << "stop : (" << (auto_flag_ ? "auto" : "manual") << ")" << std::endl;
+      std::cout << "stop : (" << (flags_.auto_mode ? "auto" : "manual") << ")" << std::endl;
       vel.linear.x = 0.0;
       vel.angular.z = 0.0;
 
-      stuck_count_ = 0;
-      trigger_count_ = 0;
+      counters_.stuck = 0;
+      counters_.trigger = 0;
     }
-    if (emergency_stop_flag_)
+    if (flags_.emergency_stop)
     {
       std::cout << "emergency stop" << std::endl;
       vel.linear.x = 0.0;
       vel.angular.z = 0.0;
     }
-    if (intersection_flag_)
+    if (flags_.intersection)
     {
       std_msgs::Bool flag;
       flag.data = true;
@@ -262,27 +246,27 @@ void MotionDecision::process(void)
       std::cout << "=========intersection=============" << std::endl;
     }
 
-    if (vel.linear.x > MAX_SPEED)
+    if (vel.linear.x > params_.max_speed)
     {
-      vel.linear.x = MAX_SPEED;
+      vel.linear.x = params_.max_speed;
     }
-    else if (vel.linear.x < -MAX_SPEED)
+    else if (vel.linear.x < -params_.max_speed)
     {
-      vel.linear.x = MAX_SPEED;
+      vel.linear.x = params_.max_speed;
     }
-    if (vel.angular.z > MAX_YAWRATE)
+    if (vel.angular.z > params_.max_yawrate)
     {
-      vel.angular.z = MAX_YAWRATE;
+      vel.angular.z = params_.max_yawrate;
     }
-    else if (vel.angular.z < -MAX_YAWRATE)
+    else if (vel.angular.z < -params_.max_yawrate)
     {
-      vel.angular.z = -MAX_YAWRATE;
+      vel.angular.z = -params_.max_yawrate;
     }
 
     velocity_pub_.publish(vel);
 
-    front_min_range_ = -1.0;
-    rear_min_range_ = -1.0;
+    laser_info_.front_min_range = -1.0;
+    laser_info_.rear_min_range = -1.0;
 
     loop_rate.sleep();
     ros::spinOnce();
@@ -292,7 +276,7 @@ void MotionDecision::process(void)
 void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
 {
   std::cout << "=== recovery mode ===" << std::endl;
-  if (!front_laser_received_ || !rear_laser_received_)
+  if (!flags_.front_laser_received || !flags_.rear_laser_received)
   {
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
@@ -334,10 +318,10 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
           double max_y = max_velocity / max_y * (1 - cos(max_y * ttc));
           double x = velocity / yawrate * sin(yawrate * ttc);
           double y = velocity / y * (1 - cos(y * ttc));
-          double angle = (2.0 * front_min_idx_ / front_laser_.ranges.size() - 1.0) * (front_laser_.angle_max);
+          double angle = (2.0 * laser_info_.front_min_idx / front_laser_.ranges.size() - 1.0) * (front_laser_.angle_max);
           double angle_diff_a = fabs(angle - atan2(max_y, max_x));
           double angle_diff_b = fabs(angle - atan2(y, x));
-          if (M_PI / 2.0 <= fabs(angle) && angle_diff_a < angle_diff_b && calc_ttc(vel, false) > SAFETY_COLLISION_TIME)
+          if (M_PI / 2.0 <= fabs(angle) && angle_diff_a < angle_diff_b && calc_ttc(vel, false) > params_.safety_collision_time)
           {
             max_velocity = velocity;
             max_y = y;
@@ -353,7 +337,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
         }
       }
     }
-    if (max_ttc > SAFETY_COLLISION_TIME)
+    if (max_ttc > params_.safety_collision_time)
     {
       cmd_vel.linear.x = max_velocity;
       cmd_vel.angular.z = max_yawrate;
@@ -361,7 +345,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
     else
     {
       // set vel to move away from obstacles
-      if (front_min_idx_ < front_laser_.ranges.size() * 0.5)
+      if (laser_info_.front_min_idx < front_laser_.ranges.size() * 0.5)
       {
         cmd_vel.linear.x = 0.0;
         cmd_vel.angular.z = 0.2;
@@ -399,7 +383,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
           double max_y = max_velocity / max_y * (1 - cos(max_y * ttc));
           double x = velocity / yawrate * sin(yawrate * ttc);
           double y = velocity / yawrate * (1 - cos(yawrate * ttc));
-          double angle = (2.0 * rear_min_idx_ / rear_laser_.ranges.size() - 1.0) * (rear_laser_.angle_max);
+          double angle = (2.0 * laser_info_.rear_min_idx / rear_laser_.ranges.size() - 1.0) * (rear_laser_.angle_max);
           double angle_diff_a = fabs(angle - atan2(max_y, max_x));
           double angle_diff_b = fabs(angle - atan2(y, x));
           if (angle_diff_a > angle_diff_b)
@@ -411,7 +395,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
         }
       }
     }
-    if (max_ttc > SAFETY_COLLISION_TIME)
+    if (max_ttc > params_.safety_collision_time)
     {
       cmd_vel.linear.x = max_velocity;
       cmd_vel.angular.z = max_yawrate;
@@ -419,7 +403,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel, bool go_back)
     else
     {
       // set vel to move away from obstacles
-      if (rear_min_idx_ > rear_laser_.ranges.size() * 0.5)
+      if (laser_info_.rear_min_idx > rear_laser_.ranges.size() * 0.5)
       {
         cmd_vel.linear.x = 0.0;
         cmd_vel.angular.z = -0.2;
@@ -447,7 +431,7 @@ float MotionDecision::calc_ttc(geometry_msgs::Twist vel, bool go_back)
   }
 
   // calculate TTC
-  double ttc = PREDICT_TIME;
+  double ttc = params_.predict_time;
   int i = 0;
   for (auto range : laser.ranges)
   {
@@ -464,13 +448,14 @@ float MotionDecision::calc_ttc(geometry_msgs::Twist vel, bool go_back)
     obs_x = range * cos(angle);
     obs_y = range * sin(angle);
 
-    for (double time = DT; time < PREDICT_TIME; time += DT)
+    for (double time = params_.dt; time < params_.predict_time; time += params_.dt)
     {
-      yaw += vel.angular.z * DT;
-      x += fabs(vel.linear.x) * cos(yaw) * DT;
-      y += fabs(vel.linear.x) * sin(yaw) * DT;
+      yaw += vel.angular.z * params_.dt;
+      x += fabs(vel.linear.x) * cos(yaw) * params_.dt;
+
+      y += fabs(vel.linear.x) * sin(yaw) * params_.dt;
       double tmp_range = sqrt((x - obs_x) * (x - obs_x) + (y - obs_y) * (y - obs_y));
-      if (tmp_range < COLLISION_DISTANCE)
+      if (tmp_range < params_.collision_distance)
       {
         if (time < ttc)
         {
