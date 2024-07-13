@@ -64,6 +64,10 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
     cmd_vel_.linear.x = msg->buttons[4] ? msg->axes[1] * params_.max_speed : 0.0;
     cmd_vel_.angular.z = msg->buttons[4] ? msg->axes[0] * params_.max_yawrate : 0.0;
   }
+  else if (mode_.first == "move" && mode_.second == "auto" && !flags_.local_path_received)
+  {
+    cmd_vel_ = geometry_msgs::Twist();
+  }
 
   if(msg->buttons[11] && msg->buttons[12])
   {
@@ -159,6 +163,13 @@ void MotionDecision::process(void)
       {
         recovery_mode(cmd_vel_);
       }
+      else if (params_.trigger_count_threshold <= counters_.trigger)
+      {
+        counters_.stuck = 0;
+        counters_.trigger = 0;
+        if (!flags_.local_path_received)
+          cmd_vel_ = geometry_msgs::Twist();
+      }
       else if (((cmd_vel_.linear.x < DBL_EPSILON && fabs(cmd_vel_.angular.z) < DBL_EPSILON) ||
        (odom_vel_.linear.x < 0.01 && fabs(odom_vel_.angular.z) < 0.01)))
       {
@@ -167,16 +178,9 @@ void MotionDecision::process(void)
         else
           counters_.trigger++;
       }
-      else
-      {
-        // reset counters when robot moves
-        counters_.stuck = 0;
-        counters_.trigger = 0;
-      }
     }
     else if (mode_.second == "manual")
     {
-      // reset counters
       counters_.stuck = 0;
       counters_.trigger = 0;
     }
