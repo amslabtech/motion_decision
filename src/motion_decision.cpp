@@ -65,10 +65,10 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
     counters_.trigger = 0;
   }
 
-  if (mode_.first == "move" && mode_.second == "manual" && msg->buttons[4])
+  if (mode_.first == "move" && mode_.second == "manual")
   {
-    cmd_vel_.linear.x = msg->axes[1] * params_.max_speed;
-    cmd_vel_.angular.z = msg->axes[0] * params_.max_yawrate;
+    cmd_vel_.linear.x = msg->buttons[4] ? msg->axes[1] * params_.max_speed : 0.0;
+    cmd_vel_.angular.z = msg->buttons[4] ? msg->axes[0] * params_.max_yawrate : 0.0;
   }
 
   if(msg->buttons[11] && msg->buttons[12])
@@ -182,7 +182,6 @@ void MotionDecision::process(void)
     }
 
     publish_cmd_vel(cmd_vel_);
-    print_status(cmd_vel_);
 
     laser_info_.front_min_range = -1.0;
     laser_info_.rear_min_range = -1.0;
@@ -390,15 +389,16 @@ float MotionDecision::calc_ttc(geometry_msgs::Twist vel)
 
 void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 {
-  if (!flags_.front_laser_received || !flags_.rear_laser_received || flags_.emergency_stop)
-  {
-    velocity_pub_.publish(geometry_msgs::Twist());
-    return;
-  }
-
   cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, params_.max_speed) : std::max(cmd_vel.linear.x, -params_.max_speed);
   cmd_vel.angular.z = 0.0 < cmd_vel.angular.z ? std::min(cmd_vel.angular.z, params_.max_yawrate) : std::max(cmd_vel.angular.z, -params_.max_yawrate);
+
+  if (flags_.emergency_stop || mode_.first == "stop")
+    cmd_vel = geometry_msgs::Twist();
+  if (mode_.first == "move" && mode_.second == "auto" && (!flags_.front_laser_received || !flags_.rear_laser_received))
+    cmd_vel = geometry_msgs::Twist();
+
   velocity_pub_.publish(cmd_vel);
+  print_status(cmd_vel);
 }
 
 void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
