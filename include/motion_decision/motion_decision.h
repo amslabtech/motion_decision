@@ -137,6 +137,14 @@ private:
   void task_stop_flag_callback(const std_msgs::BoolConstPtr &msg);
 
   /**
+   * @brief Publish velocity function
+   * @param [in] laser Laser data
+   * @param [in] min_idx Index of the closest valid sensor data
+   * @param [in] min_range Closest valid sensor data
+   */
+  void search_min_range(const sensor_msgs::LaserScan &laser, int &min_idx, float &min_range);
+
+  /**
    * @brief Recovery mode function
    * @param [out] cmd_vel Velocity
    * @param [in] go_back Direction of motion

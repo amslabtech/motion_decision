@@ -51,21 +51,7 @@ void MotionDecision::emergency_stop_flag_callback(const std_msgs::BoolConstPtr &
 void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   front_laser_ = *msg;
-  laser_info_.front_min_range = front_laser_.range_max;
-  laser_info_.front_min_idx = 0;
-  int count = 0;
-  for (auto range : front_laser_.ranges)
-  {
-    if (range < laser_info_.front_min_range)
-    {
-      if (range > 0.1)
-      {
-        laser_info_.front_min_range = range;
-        laser_info_.front_min_idx = count;
-      }
-    }
-    count++;
-  }
+  search_min_range(front_laser_, laser_info_.front_min_idx, laser_info_.front_min_range);
   flags_.front_laser_received = true;
 }
 
@@ -120,21 +106,7 @@ void MotionDecision::odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   rear_laser_ = *msg;
-  laser_info_.rear_min_range = rear_laser_.range_max;
-  laser_info_.rear_min_idx = 0;
-  int count = 0;
-  for (auto range : rear_laser_.ranges)
-  {
-    if (range < laser_info_.rear_min_range)
-    {
-      if (range > 0.1)
-      {
-        laser_info_.rear_min_range = range;
-        laser_info_.rear_min_idx = count;
-      }
-    }
-    count++;
-  }
+  search_min_range(rear_laser_, laser_info_.rear_min_idx, laser_info_.rear_min_range);
   flags_.rear_laser_received = true;
 }
 
@@ -160,6 +132,20 @@ void MotionDecision::task_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
   else
   {
     flags_.move_mode = true;
+  }
+}
+
+void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, int &min_idx, float &min_range)
+{
+  min_range = laser.range_max;
+  min_idx = 0;
+  for (size_t i = 0; i < laser.ranges.size(); i++)
+  {
+    if (laser.ranges[i] < min_range)
+    {
+      min_range = laser.ranges[i];
+      min_idx = i;
+    }
   }
 }
 
