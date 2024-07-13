@@ -24,6 +24,11 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   recovery_mode_flag_sub_ = nh_.subscribe("/recovery_mode_flag", 1, &MotionDecision::recovery_mode_flag_callback, this);
   task_stop_flag_sub_ = nh_.subscribe("/task/stop", 1, &MotionDecision::task_stop_flag_callback, this);
 
+  load_params();
+}
+
+void MotionDecision::load_params(void)
+{
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("recovery_mode_threshold", params_.recovery_mode_threshold, 60);
   private_nh_.param<int>("trigger_count_threshold", params_.trigger_count_threshold, 2);

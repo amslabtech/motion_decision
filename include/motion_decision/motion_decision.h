@@ -80,6 +80,11 @@ public:
 
 private:
   /**
+   * @brief Load parameters function
+   */
+  void load_params(void);
+
+  /**
    * @brief Emergency stop flag callback function
    * @param [in] msg Msg from emergency_stop_flag_sub_
    */
