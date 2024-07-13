@@ -244,7 +244,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
           if (M_PI / 2.0 <= fabs(angle) && angle_diff_a < angle_diff_b && calc_ttc(vel) > params_.safety_collision_time)
           {
             max_velocity = velocity;
-            max_y = y;
+            max_yawrate = yawrate;
             max_ttc = ttc;
             reverse_flag = true;
           }
