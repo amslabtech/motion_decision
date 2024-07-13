@@ -168,6 +168,12 @@ private:
    */
   float calc_ttc(geometry_msgs::Twist vel);
 
+  /**
+   * @brief Print status function
+   * @param [in] cmd_vel Velocity
+   */
+  void print_status(const geometry_msgs::Twist &cmd_vel);
+
   Params params_;
   Flags flags_;
   Counters counters_;

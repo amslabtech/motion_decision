@@ -160,16 +160,10 @@ void MotionDecision::process(void)
   while (ros::ok())
   {
     geometry_msgs::Twist vel;
-    std::cout << "==== motion decision ====" << std::endl;
-    std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
-    std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
-    std::cout << "trigger count   : " << counters_.trigger << std::endl;
     if (flags_.move_mode)
     {
-      std::cout << "move : (";
       if (flags_.auto_mode)
       {
-        std::cout << "auto";
         vel = cmd_vel_;
         if (0 < counters_.trigger && counters_.trigger < params_.trigger_count_threshold)
         {
@@ -180,8 +174,6 @@ void MotionDecision::process(void)
             flags_.enable_recovery_mode && ((vel.linear.x < DBL_EPSILON && fabs(vel.angular.z) < DBL_EPSILON) ||
                                       (odom_vel_.linear.x < 0.01 && fabs(odom_vel_.angular.z) < 0.01)))
         {
-          std::cout << ")" << std::endl;
-          std::cout << "stuck_count : " << counters_.stuck << std::endl;
           if (counters_.stuck < params_.recovery_mode_threshold)
           {
             counters_.stuck++;
@@ -202,7 +194,6 @@ void MotionDecision::process(void)
       }
       else
       {
-        std::cout << "manual";
         if (flags_.joy)
         {
           vel = joy_vel_;
@@ -216,12 +207,9 @@ void MotionDecision::process(void)
         counters_.stuck = 0;
         counters_.trigger = 0;
       }
-      std::cout << ")" << std::endl;
-      std::cout << vel << std::endl;
     }
     else
     {
-      std::cout << "stop : (" << (flags_.auto_mode ? "auto" : "manual") << ")" << std::endl;
       vel.linear.x = 0.0;
       vel.angular.z = 0.0;
 
@@ -259,6 +247,7 @@ void MotionDecision::process(void)
       vel.angular.z = -params_.max_yawrate;
     }
 
+    print_status(vel);
     velocity_pub_.publish(vel);
 
     laser_info_.front_min_range = -1.0;
@@ -271,13 +260,16 @@ void MotionDecision::process(void)
 
 void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
 {
-  std::cout << "=== recovery mode ===" << std::endl;
   if (!flags_.front_laser_received || !flags_.rear_laser_received)
   {
     cmd_vel.linear.x = 0.0;
     cmd_vel.angular.z = 0.0;
     return;
   }
+
+  std::cout << "#####################" << std::endl;
+  std::cout << "### recovery mode ###" << std::endl;
+  std::cout << "#####################" << std::endl;
 
   // variables for recovery mode
   double max_velocity_limit = 0.3;
@@ -463,6 +455,23 @@ float MotionDecision::calc_ttc(geometry_msgs::Twist vel)
     i++;
   }
   return ttc;
+}
+
+void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
+{
+  std::cout << "=== " << mode_.second << " (" << mode_.first << ") ===" << std::endl;
+  std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
+  std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
+  std::cout << "trigger count   : " << counters_.trigger << std::endl;
+  if (0 < counters_.stuck)
+    std::cout << "stuck_count : " << counters_.stuck << std::endl;
+  if (mode_.first == "move")
+  {
+    std::cout << "cmd_vel:" << std::endl;
+    std::cout << "  linear.x  : " << cmd_vel.linear.x << std::endl;
+    std::cout << "  angular.z : " << cmd_vel.angular.z << std::endl;
+  }
+  std::cout << std::endl;
 }
 
 /**
