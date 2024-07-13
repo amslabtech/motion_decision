@@ -91,13 +91,6 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
   }
   joy_vel_.linear.x = joy_.axes[1] * params_.max_speed;
   joy_vel_.angular.z = joy_.axes[0] * params_.max_yawrate;
-  /*
-      if(joy.buttons[5]){
-          intersection_flag = true;
-      }else{
-          intersection_flag = false;
-      }
-  */
 
   if (joy_.buttons[4])
   {
@@ -106,6 +99,14 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
   else
   {
     flags_.joy = false;
+  }
+  if(joy_.buttons[11] && joy_.buttons[12])
+  {
+    flags_.intersection = true;
+  }
+  else
+  {
+    flags_.intersection = false;
   }
 }
 
