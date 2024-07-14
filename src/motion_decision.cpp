@@ -19,8 +19,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   emergency_stop_flag_sub_ = nh_.subscribe("/emergency_stop", 1, &MotionDecision::emergency_stop_flag_callback, this);
   front_laser_sub_ = nh_.subscribe("/front_laser/scan", 1, &MotionDecision::front_laser_callback, this);
   joy_sub_ = nh_.subscribe("/joy", 1, &MotionDecision::joy_callback, this);
-  local_path_cmd_vel_sub_ =
-      nh_.subscribe("/local_path/cmd_vel", 1, &MotionDecision::local_path_cmd_vel_callback, this);
+  local_path_cmd_vel_sub_ = nh_.subscribe("/local_path/cmd_vel", 1, &MotionDecision::local_path_cmd_vel_callback, this);
   odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
   rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
   recovery_mode_flag_sub_ = nh_.subscribe("/recovery_mode_flag", 1, &MotionDecision::recovery_mode_flag_callback, this);
