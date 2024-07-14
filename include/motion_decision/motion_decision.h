@@ -16,7 +16,7 @@
 #include <std_msgs/Bool.h>
 #include <string>
 
-struct Params
+struct MotionDecisionParams
 {
   int hz;
   int recovery_mode_threshold;
@@ -32,6 +32,14 @@ struct Params
   std::string task_stop_sound_path;
 };
 
+struct RecoveryParams
+{
+  double max_velocity;
+  double max_yawrate;
+  double velocity_resolution;
+  double yawrate_resolution;
+};
+
 struct Flags
 {
   bool emergency_stop = false;
@@ -45,6 +53,7 @@ struct Flags
   bool front_laser_received = false;
   bool rear_laser_received = false;
   bool enable_recovery_mode = true;
+  bool recovery_mode = false;
 };
 
 struct Counters
@@ -155,6 +164,8 @@ private:
 
   /**
    * @brief Recovery mode function
+   * @details Run when stuck is detected. Move away from the nearest obstacle. Face the direction in which the
+   *   LocalPlanner is comfortable moving.
    * @param [out] cmd_vel Velocity
    * @param [in] go_back Direction of motion
    */
@@ -162,11 +173,20 @@ private:
 
   /**
    * @brief Calculate TTC (Time To Collision) function
-   * @param [in] vel Current velocity
-   * @param [in] go_back Direction of motion
+   * @param [in] velocity Velocity
+   * @param [in] yawrate Yawrate
    * @return double TTC
    */
-  double calc_ttc(const geometry_msgs::Twist &cmd_vel);
+  double calc_ttc(const double &velocity, const double &yawrate);
+
+  /**
+   * @brief Simulate by uniform circular motion function
+   * @param [in] velocity Velocity
+   * @param [in] yawrate Yawrate
+   * @param [in] sim_time Simulation time
+   * @return std::pair<double, double> {predicted_x, predicted_y}
+   */
+  std::pair<double, double> sim_by_uniform_circluar_motion(const double &velocity, const double &yawrate, const double &sim_time);
 
   /**
    * @brief Publish velocity function
@@ -180,7 +200,8 @@ private:
    */
   void print_status(const geometry_msgs::Twist &cmd_vel);
 
-  Params params_;
+  MotionDecisionParams params_;
+  RecoveryParams params_of_recovery_;
   Flags flags_;
   Counters counters_;
   LaserInfo laser_info_;
