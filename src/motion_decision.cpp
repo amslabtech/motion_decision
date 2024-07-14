@@ -167,7 +167,7 @@ void MotionDecision::process(void)
     {
       if (0 < counters_.recovery && counters_.recovery < max_recovery_count)
       {
-        recovery_mode(cmd_vel_);
+        cmd_vel_ = recovery_mode(cmd_vel_);
       }
       else if (max_recovery_count <= counters_.recovery)
       {
@@ -209,11 +209,11 @@ void MotionDecision::process(void)
   }
 }
 
-void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
+geometry_msgs::Twist MotionDecision::recovery_mode(geometry_msgs::Twist cmd_vel)
 {
   counters_.recovery++;
   if (!front_laser_.has_value() || !rear_laser_.has_value())
-    return;
+    return geometry_msgs::Twist();
 
   // select data by direction of motion
   const bool sim_back = 0.0 < cmd_vel.linear.x;
@@ -264,6 +264,8 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
       }
     }
   }
+
+  return cmd_vel;
 }
 
 float MotionDecision::calc_ttc(const float &velocity, const float &yawrate, const sensor_msgs::LaserScan &laser)

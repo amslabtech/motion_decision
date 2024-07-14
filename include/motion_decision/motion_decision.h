@@ -169,8 +169,9 @@ private:
    * @details Run when stuck is detected. Move away from the nearest obstacle. Face the direction in which the
    *   LocalPathPlanner is comfortable moving.
    * @param [out] cmd_vel Command velocity
+   * @return geometry_msgs::Twist Command velocity
    */
-  void recovery_mode(geometry_msgs::Twist &cmd_vel);
+  geometry_msgs::Twist recovery_mode(geometry_msgs::Twist cmd_vel);
 
   /**
    * @brief Calculate TTC (Time To Collision) function
