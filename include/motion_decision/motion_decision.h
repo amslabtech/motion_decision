@@ -10,6 +10,7 @@
 
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
+#include <optional>
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/LaserScan.h>
@@ -50,8 +51,6 @@ struct Flags
   bool intersection = false;
   bool safety_mode = false;
   bool local_path_received = false;
-  bool front_laser_received = false;
-  bool rear_laser_received = false;
   bool enable_recovery_mode = true;
   bool recovery_mode = false;
 };
@@ -177,7 +176,7 @@ private:
    * @param [in] yawrate Yawrate
    * @return float TTC
    */
-  float calc_ttc(const float &velocity, const float &yawrate);
+  float calc_ttc(const float &velocity, const float &yawrate, const sensor_msgs::LaserScan &laser);
 
   /**
    * @brief Simulate by uniform circular motion function
@@ -225,8 +224,8 @@ private:
   geometry_msgs::Twist cmd_vel_;
   geometry_msgs::Twist joy_vel_;
   geometry_msgs::Twist odom_vel_;
-  sensor_msgs::LaserScan front_laser_;
-  sensor_msgs::LaserScan rear_laser_;
+  std::optional<sensor_msgs::LaserScan> front_laser_;
+  std::optional<sensor_msgs::LaserScan> rear_laser_;
 };
 
 #endif  // MOTION_DECISION_MOTION_DECISION_H

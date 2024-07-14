@@ -58,8 +58,7 @@ void MotionDecision::emergency_stop_flag_callback(const std_msgs::BoolConstPtr &
 void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   front_laser_ = *msg;
-  search_min_range(front_laser_, laser_info_.front_min_idx, laser_info_.front_min_range);
-  flags_.front_laser_received = true;
+  search_min_range(front_laser_.value(), laser_info_.front_min_idx, laser_info_.front_min_range);
 }
 
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
@@ -97,8 +96,7 @@ void MotionDecision::odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   rear_laser_ = *msg;
-  search_min_range(rear_laser_, laser_info_.rear_min_idx, laser_info_.rear_min_range);
-  flags_.rear_laser_received = true;
+  search_min_range(rear_laser_.value(), laser_info_.rear_min_idx, laser_info_.rear_min_range);
 }
 
 void MotionDecision::recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg)
@@ -196,8 +194,8 @@ void MotionDecision::process(void)
 
     laser_info_.front_min_range = -1.0;
     laser_info_.rear_min_range = -1.0;
-    flags_.front_laser_received = false;
-    flags_.rear_laser_received = false;
+    front_laser_.reset();
+    rear_laser_.reset();
     flags_.local_path_received = false;
     flags_.recovery_mode = false;
 
@@ -208,11 +206,14 @@ void MotionDecision::process(void)
 
 void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
 {
+  counters_.trigger++;
   flags_.recovery_mode = true;
+  if (!front_laser_.has_value() || !rear_laser_.has_value())
+    return;
 
   // select data by direction of motion
   const bool sim_back = 0.0 < cmd_vel.linear.x;
-  const sensor_msgs::LaserScan laser = sim_back ? front_laser_ : rear_laser_;
+  const sensor_msgs::LaserScan laser = sim_back ? front_laser_.value() : rear_laser_.value();
   const int min_idx = sim_back ? laser_info_.front_min_idx : laser_info_.rear_min_idx;
   const float max_velocity = sim_back ? -params_of_recovery_.max_velocity : params_of_recovery_.max_velocity;
   const float velocity_resolution = sim_back ? -params_of_recovery_.velocity_resolution : params_of_recovery_.velocity_resolution;
@@ -228,7 +229,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
   {
     for (float yawrate = -params_of_recovery_.max_yawrate; yawrate <= params_of_recovery_.max_yawrate; yawrate += params_of_recovery_.yawrate_resolution)
     {
-      const float ttc = calc_ttc(velocity, yawrate);
+      const float ttc = calc_ttc(velocity, yawrate, laser);
       if (ttc > max_ttc && ttc > params_.safety_collision_time)
       {
         cmd_vel.linear.x = velocity;
@@ -253,15 +254,10 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
       }
     }
   }
-
-  counters_.trigger++;
 }
 
-float MotionDecision::calc_ttc(const float &velocity, const float &yawrate)
+float MotionDecision::calc_ttc(const float &velocity, const float &yawrate, const sensor_msgs::LaserScan &laser)
 {
-  // select laser data by direction of motion
-  const sensor_msgs::LaserScan laser = 0.0 <= velocity ? front_laser_ : rear_laser_;
-
   // calculate TTC (Time To Collision)
   float ttc = params_.predict_time;
   for (size_t i = 0; i < laser.ranges.size(); i++)
@@ -305,7 +301,7 @@ void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 
   if (flags_.emergency_stop || mode_.first == "stop")
     cmd_vel = geometry_msgs::Twist();
-  if (mode_.first == "move" && mode_.second == "auto" && (!flags_.front_laser_received || !flags_.rear_laser_received))
+  if (mode_.first == "move" && mode_.second == "auto" && (!front_laser_.has_value() || !rear_laser_.has_value()))
     cmd_vel = geometry_msgs::Twist();
 
   velocity_pub_.publish(cmd_vel);
