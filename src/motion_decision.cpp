@@ -162,7 +162,7 @@ void MotionDecision::process(void)
   const int max_stuck_count = static_cast<int>(params_.stuck_time_threshold * params_.hz);
   while (ros::ok())
   {
-    // Detect stuck and recover for a certain period of time
+    // detect stuck and recover for a certain period of time
     if (mode_.first == "move" && mode_.second == "auto" && params_of_recovery_.use)
     {
       if (0 < counters_.recovery && counters_.recovery < max_recovery_count)
@@ -252,7 +252,7 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
             fabs(obs_angle - atan2(best_sim_pos.second, best_sim_pos.first));
         const float angle_between_tmp_sim_pos_and_obs = fabs(obs_angle - atan2(tmp_sim_pos.second, tmp_sim_pos.first));
 
-        // if the angle between the obstacle and the robot is greater than 90 degrees, the robot will move backwards
+        // change the turning direction depending on whether there is an obstacle in the direction of travel
         if (obs_found_in_direction_of_travel &&
                 angle_between_best_sim_pos_and_obs > angle_between_tmp_sim_pos_and_obs ||
             !obs_found_in_direction_of_travel && angle_between_best_sim_pos_and_obs < angle_between_tmp_sim_pos_and_obs)
@@ -368,9 +368,6 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
   std::cout << std::endl;
 }
 
-/**
- * @brief Main function
- */
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "motion_decision");

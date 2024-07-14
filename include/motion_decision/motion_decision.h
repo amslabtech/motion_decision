@@ -91,64 +91,66 @@ private:
 
   /**
    * @brief Emergency stop flag callback function
-   * @param [in] msg Msg from emergency_stop_flag_sub_
+   * @details [Warn] If you stop the robot by emergency stop, you need to republish the flag to false to run the robot.
+   *   You can't unlock the robot by Joy.
+   * @param [in] msg Msg of emergency stop flag
    */
   void emergency_stop_flag_callback(const std_msgs::BoolConstPtr &msg) { flags_.emergency_stop = msg->data; }
 
   /**
    * @brief Front laser callback function
-   * @param [in] msg Msg from front_laser_sub_
+   * @param [in] msg Msg of front laser
    */
   void front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg);
 
   /**
    * @brief Joy callback function
    * @details Set flags by input from joy
-   * @param [in] msg Msg from joy_sub_
+   * @param [in] msg Msg of Joy
    */
   void joy_callback(const sensor_msgs::JoyConstPtr &msg);
 
   /**
    * @brief Cmd vel callback function
-   * @param [in] msg Msg from
+   * @param [in] msg Msg of local path cmd vel
    */
   void local_path_cmd_vel_callback(const geometry_msgs::TwistConstPtr &msg);
 
   /**
    * @brief Odom callback function
-   * @param [in] msg Msg from odom_sub_
+   * @param [in] msg Msg of odom
    */
   void odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom_vel_ = msg->twist.twist; }
 
   /**
    * @brief Rear laser callback function
-   * @param [in] msg Msg from rear_laser_sub_
+   * @param [in] msg Msg of rear laser
    */
   void rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg);
 
   /**
    * @brief Recovery mode flag callback function
-   * @param [in] msg Msg from recovery_mode_flag_sub_
+   * @details This is not flag to run recovery mode. This is flag to use recovery mode.
+   * @param [in] msg Msg of recovery mode flag
    */
   void recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg) { params_of_recovery_.use = msg->data; }
 
   /**
    * @brief Task stop flag callback function
-   * @details Emergency stop when task stop flag is true
-   * @param [in] msg Msg from task_stop_flag_sub_
+   * @param [in] msg Msg of task stop flag
    */
   void task_stop_flag_callback(const std_msgs::BoolConstPtr &msg);
 
   /**
-   * @brief Cache the closest valid sensor data and its index
+   * @brief Cache the closest sensor data and its index
    * @param [in] laser Laser data
-   * @param [in] min_range Closest valid sensor data
-   * @param [in] index_of_min_range Index of the closest valid sensor data
+   * @param [out] min_range Closest sensor data
+   * @param [out] index_of_min_range Index of the closest sensor data
    */
   void search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range);
 
   /**
-   * @brief Publish velocity function
+   * @brief Select mode function
    * @param [in] msg Msg of Joy
    * @param [in] mode Current mode
    * @return std::pair<std::string, std::string> New mode
@@ -165,9 +167,8 @@ private:
   /**
    * @brief Recovery mode function
    * @details Run when stuck is detected. Move away from the nearest obstacle. Face the direction in which the
-   *   LocalPlanner is comfortable moving.
+   *   LocalPathPlanner is comfortable moving.
    * @param [out] cmd_vel Command velocity
-   * @param [in] go_back Direction of motion
    */
   void recovery_mode(geometry_msgs::Twist &cmd_vel);
 
@@ -175,6 +176,7 @@ private:
    * @brief Calculate TTC (Time To Collision) function
    * @param [in] velocity Velocity
    * @param [in] yawrate Yawrate
+   * @param [in] laser Laser data
    * @return float TTC
    */
   float calc_ttc(const float &velocity, const float &yawrate, const sensor_msgs::LaserScan &laser);
