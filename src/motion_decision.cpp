@@ -33,21 +33,21 @@ void MotionDecision::load_params(void)
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("recovery_mode_threshold", params_.recovery_mode_threshold, 60);
   private_nh_.param<int>("trigger_count_threshold", params_.trigger_count_threshold, 2);
-  private_nh_.param<double>("max_speed", params_.max_speed, 1.0);
-  private_nh_.param<double>("max_yawrate", params_.max_yawrate, 1.0);
-  private_nh_.param<double>("dt", params_.dt, 0.1);
-  private_nh_.param<double>("predict_time", params_.predict_time, 1.0);
-  private_nh_.param<double>("collision_distance", params_.collision_distance, 0.4);
-  private_nh_.param<double>("safety_collision_time", params_.safety_collision_time, 0.5);
+  private_nh_.param<float>("max_speed", params_.max_speed, 1.0);
+  private_nh_.param<float>("max_yawrate", params_.max_yawrate, 1.0);
+  private_nh_.param<float>("dt", params_.dt, 0.1);
+  private_nh_.param<float>("predict_time", params_.predict_time, 1.0);
+  private_nh_.param<float>("collision_distance", params_.collision_distance, 0.4);
+  private_nh_.param<float>("safety_collision_time", params_.safety_collision_time, 0.5);
   private_nh_.param<std::string>("stop_sound_path", params_.stop_sound_path, std::string(""));
   private_nh_.param<std::string>("recovery_sound_path", params_.recovery_sound_path, std::string(""));
   private_nh_.param<std::string>("task_stop_sound_path", params_.task_stop_sound_path, std::string(""));
 
   // RecoveryParams
-  private_nh_.param<double>("recovery/max_velocity", params_of_recovery_.max_velocity, 0.3);
-  private_nh_.param<double>("recovery/max_yawrate", params_of_recovery_.max_yawrate, 0.3);
-  private_nh_.param<double>("recovery/velocity_resolution", params_of_recovery_.velocity_resolution, 0.1);
-  private_nh_.param<double>("recovery/yawrate_resolution", params_of_recovery_.yawrate_resolution, 0.1);
+  private_nh_.param<float>("recovery/max_velocity", params_of_recovery_.max_velocity, 0.3);
+  private_nh_.param<float>("recovery/max_yawrate", params_of_recovery_.max_yawrate, 0.3);
+  private_nh_.param<float>("recovery/velocity_resolution", params_of_recovery_.velocity_resolution, 0.1);
+  private_nh_.param<float>("recovery/yawrate_resolution", params_of_recovery_.yawrate_resolution, 0.1);
 }
 
 void MotionDecision::emergency_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
@@ -214,21 +214,21 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
   const bool sim_back = 0.0 < cmd_vel.linear.x;
   const sensor_msgs::LaserScan laser = sim_back ? front_laser_ : rear_laser_;
   const int min_idx = sim_back ? laser_info_.front_min_idx : laser_info_.rear_min_idx;
-  const double max_velocity = sim_back ? -params_of_recovery_.max_velocity : params_of_recovery_.max_velocity;
-  const double velocity_resolution = sim_back ? -params_of_recovery_.velocity_resolution : params_of_recovery_.velocity_resolution;
+  const float max_velocity = sim_back ? -params_of_recovery_.max_velocity : params_of_recovery_.max_velocity;
+  const float velocity_resolution = sim_back ? -params_of_recovery_.velocity_resolution : params_of_recovery_.velocity_resolution;
 
   // set cmd_vel to move away from the nearest obstacle
-  double max_ttc = 0.0;
+  float max_ttc = 0.0;
   cmd_vel.linear.x = 0.0;
   cmd_vel.angular.z = min_idx < laser.ranges.size() / 2 ? 0.2 : -0.2;
   cmd_vel.linear.z *= sim_back ? 1.0 : -1.0;
-  const double obs_angle = laser.angle_min + min_idx * laser.angle_increment;
+  const float obs_angle = laser.angle_min + min_idx * laser.angle_increment;
   const bool obs_found_in_direction_of_travel = obs_angle < M_PI / 2.0;
-  for (double velocity = velocity_resolution; fabs(velocity) <= fabs(max_velocity); velocity += velocity_resolution)
+  for (float velocity = velocity_resolution; fabs(velocity) <= fabs(max_velocity); velocity += velocity_resolution)
   {
-    for (double yawrate = -params_of_recovery_.max_yawrate; yawrate <= params_of_recovery_.max_yawrate; yawrate += params_of_recovery_.yawrate_resolution)
+    for (float yawrate = -params_of_recovery_.max_yawrate; yawrate <= params_of_recovery_.max_yawrate; yawrate += params_of_recovery_.yawrate_resolution)
     {
-      const double ttc = calc_ttc(velocity, yawrate);
+      const float ttc = calc_ttc(velocity, yawrate);
       if (ttc > max_ttc && ttc > params_.safety_collision_time)
       {
         cmd_vel.linear.x = velocity;
@@ -237,10 +237,10 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
       }
       else if (ttc == max_ttc && ttc > params_.safety_collision_time)
       {
-        const std::pair<double, double> best_sim_pos = sim_by_uniform_circluar_motion(cmd_vel.linear.x, cmd_vel.angular.z, ttc);
-        const std::pair<double, double> tmp_sim_pos = sim_by_uniform_circluar_motion(velocity, yawrate, ttc);
-        const double angle_between_best_sim_pos_and_obs = fabs(obs_angle - atan2(best_sim_pos.second, best_sim_pos.first));
-        const double angle_between_tmp_sim_pos_and_obs = fabs(obs_angle - atan2(tmp_sim_pos.second, tmp_sim_pos.first));
+        const std::pair<float, float> best_sim_pos = sim_by_uniform_circluar_motion(cmd_vel.linear.x, cmd_vel.angular.z, ttc);
+        const std::pair<float, float> tmp_sim_pos = sim_by_uniform_circluar_motion(velocity, yawrate, ttc);
+        const float angle_between_best_sim_pos_and_obs = fabs(obs_angle - atan2(best_sim_pos.second, best_sim_pos.first));
+        const float angle_between_tmp_sim_pos_and_obs = fabs(obs_angle - atan2(tmp_sim_pos.second, tmp_sim_pos.first));
 
         // if the angle between the obstacle and the robot is greater than 90 degrees, the robot will move backwards
         if(obs_found_in_direction_of_travel && angle_between_best_sim_pos_and_obs > angle_between_tmp_sim_pos_and_obs
@@ -257,22 +257,22 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
   counters_.trigger++;
 }
 
-double MotionDecision::calc_ttc(const double &velocity, const double &yawrate)
+float MotionDecision::calc_ttc(const float &velocity, const float &yawrate)
 {
   // select laser data by direction of motion
   const sensor_msgs::LaserScan laser = 0.0 <= velocity ? front_laser_ : rear_laser_;
 
   // calculate TTC (Time To Collision)
-  double ttc = params_.predict_time;
+  float ttc = params_.predict_time;
   for (size_t i = 0; i < laser.ranges.size(); i++)
   {
-    const double angle = (2.0 * i / laser.ranges.size() - 1.0) * laser.angle_max;
-    const double obs_x = laser.ranges[i] * cos(angle);
-    const double obs_y = laser.ranges[i] * sin(angle);
+    const float angle = (2.0 * i / laser.ranges.size() - 1.0) * laser.angle_max;
+    const float obs_x = laser.ranges[i] * cos(angle);
+    const float obs_y = laser.ranges[i] * sin(angle);
 
     // simulate motion by discrete-time model
-    double x(0.0), y(0.0), yaw(0.0);
-    for (double time = params_.dt; time < params_.predict_time; time += params_.dt)
+    float x(0.0), y(0.0), yaw(0.0);
+    for (float time = params_.dt; time < params_.predict_time; time += params_.dt)
     {
       yaw += yawrate * params_.dt;
       x += fabs(velocity) * cos(yaw) * params_.dt;
@@ -288,12 +288,12 @@ double MotionDecision::calc_ttc(const double &velocity, const double &yawrate)
   return ttc;
 }
 
-std::pair<double, double> MotionDecision::sim_by_uniform_circluar_motion(const double &velocity, const double &yawrate, const double &sim_time)
+std::pair<float, float> MotionDecision::sim_by_uniform_circluar_motion(const float &velocity, const float &yawrate, const float &sim_time)
 {
-  const double radius = velocity / yawrate;
-  const double theta = yawrate * sim_time;
-  const double predict_x = radius * sin(theta);
-  const double predict_y = radius - radius * cos(theta);
+  const float radius = velocity / yawrate;
+  const float theta = yawrate * sim_time;
+  const float predict_x = radius * sin(theta);
+  const float predict_y = radius - radius * cos(theta);
 
   return std::make_pair(predict_x, predict_y);
 }

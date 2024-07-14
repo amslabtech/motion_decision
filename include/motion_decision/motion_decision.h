@@ -21,12 +21,12 @@ struct MotionDecisionParams
   int hz;
   int recovery_mode_threshold;
   int trigger_count_threshold;
-  double max_speed;
-  double max_yawrate;
-  double dt;
-  double predict_time;
-  double collision_distance;
-  double safety_collision_time;
+  float max_speed;
+  float max_yawrate;
+  float dt;
+  float predict_time;
+  float collision_distance;
+  float safety_collision_time;
   std::string stop_sound_path;
   std::string recovery_sound_path;
   std::string task_stop_sound_path;
@@ -34,10 +34,10 @@ struct MotionDecisionParams
 
 struct RecoveryParams
 {
-  double max_velocity;
-  double max_yawrate;
-  double velocity_resolution;
-  double yawrate_resolution;
+  float max_velocity;
+  float max_yawrate;
+  float velocity_resolution;
+  float yawrate_resolution;
 };
 
 struct Flags
@@ -175,18 +175,18 @@ private:
    * @brief Calculate TTC (Time To Collision) function
    * @param [in] velocity Velocity
    * @param [in] yawrate Yawrate
-   * @return double TTC
+   * @return float TTC
    */
-  double calc_ttc(const double &velocity, const double &yawrate);
+  float calc_ttc(const float &velocity, const float &yawrate);
 
   /**
    * @brief Simulate by uniform circular motion function
    * @param [in] velocity Velocity
    * @param [in] yawrate Yawrate
    * @param [in] sim_time Simulation time
-   * @return std::pair<double, double> {predicted_x, predicted_y}
+   * @return std::pair<float, float> {predicted_x, predicted_y}
    */
-  std::pair<double, double> sim_by_uniform_circluar_motion(const double &velocity, const double &yawrate, const double &sim_time);
+  std::pair<float, float> sim_by_uniform_circluar_motion(const float &velocity, const float &yawrate, const float &sim_time);
 
   /**
    * @brief Publish velocity function

@@ -18,14 +18,14 @@
 
     <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="local_planner" respawn="true">
         <param name="HZ" value="$(arg hz)" type="int"/>
-        <param name="MAX_SPEED" value="$(arg max_speed)" type="double"/>
-        <param name="MAX_YAWRATE" value="$(arg max_yawrate)" type="double"/>
-        <param name="VEL_RATIO" value="$(arg vel_ratio)" type="double"/>
-        <param name="GOAL_DISTANCE" value="$(arg goal_distance)" type="double"/>
-        <param name="COLLISION_DISTANCE" value="$(arg collision_distance)" type="double"/>
-        <param name="DT" value="$(arg dt)" type="double"/>
-        <param name="PREDICT_TIME" value="$(arg predict_time)" type="double"/>
-        <param name="SAFETY_COLLISION_TIME" value="$(arg safety_collision_time)" type="double"/>
+        <param name="MAX_SPEED" value="$(arg max_speed)" type="float"/>
+        <param name="MAX_YAWRATE" value="$(arg max_yawrate)" type="float"/>
+        <param name="VEL_RATIO" value="$(arg vel_ratio)" type="float"/>
+        <param name="GOAL_DISTANCE" value="$(arg goal_distance)" type="float"/>
+        <param name="COLLISION_DISTANCE" value="$(arg collision_distance)" type="float"/>
+        <param name="DT" value="$(arg dt)" type="float"/>
+        <param name="PREDICT_TIME" value="$(arg predict_time)" type="float"/>
+        <param name="SAFETY_COLLISION_TIME" value="$(arg safety_collision_time)" type="float"/>
         <param name="RECOVERY_MODE_THRESHOLD" value="$(arg recovery_mode_threshold)" type="int"/>
         <param name="TRIGGER_COUNT_THRESHOLD" value="$(arg trigger_count_threshold)" type="int"/>
         <param name="STOP_SOUND_PATH" value="$(arg stop_sound_path)"/>
