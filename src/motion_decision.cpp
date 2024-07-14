@@ -274,9 +274,9 @@ float MotionDecision::calc_ttc(const float &velocity, const float &yawrate, cons
   float ttc = params_.predict_time;
   for (size_t i = 0; i < laser.ranges.size(); i++)
   {
-    const float angle = (2.0 * i / laser.ranges.size() - 1.0) * laser.angle_max;
-    const float obs_x = laser.ranges[i] * cos(angle);
-    const float obs_y = laser.ranges[i] * sin(angle);
+    const float obs_angle = laser.angle_min + i * laser.angle_increment;
+    const float obs_x = laser.ranges[i] * cos(obs_angle);
+    const float obs_y = laser.ranges[i] * sin(obs_angle);
 
     // simulate motion by discrete-time model
     float x(0.0), y(0.0), yaw(0.0);
