@@ -40,6 +40,7 @@ struct RecoveryParams
   float max_yawrate;
   float velocity_resolution;
   float yawrate_resolution;
+  float spin_turn_speed;
   float time;
 };
 

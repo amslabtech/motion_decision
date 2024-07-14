@@ -50,6 +50,7 @@ void MotionDecision::load_params(void)
   private_nh_.param<float>("recovery/max_yawrate", params_of_recovery_.max_yawrate, 0.3);
   private_nh_.param<float>("recovery/velocity_resolution", params_of_recovery_.velocity_resolution, 0.1);
   private_nh_.param<float>("recovery/yawrate_resolution", params_of_recovery_.yawrate_resolution, 0.1);
+  private_nh_.param<float>("recovery/spin_turn_speed", params_of_recovery_.spin_turn_speed, 0.2);
   private_nh_.param<float>("recovery/time", params_of_recovery_.time, 3.0);
 }
 
@@ -226,7 +227,8 @@ void MotionDecision::recovery_mode(geometry_msgs::Twist &cmd_vel)
   // set cmd_vel to move away from the nearest obstacle
   float max_ttc = 0.0;
   cmd_vel.linear.x = 0.0;
-  cmd_vel.angular.z = index_of_min_range < laser.ranges.size() / 2 ? 0.2 : -0.2;
+  cmd_vel.angular.z = index_of_min_range < laser.ranges.size() / 2 ? params_of_recovery_.spin_turn_speed
+                                                                   : -params_of_recovery_.spin_turn_speed;
   cmd_vel.linear.z *= sim_back ? 1.0 : -1.0;
   const float obs_angle = laser.angle_min + index_of_min_range * laser.angle_increment;
   const bool obs_found_in_direction_of_travel = obs_angle < M_PI / 2.0;
