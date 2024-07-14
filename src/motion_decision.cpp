@@ -104,13 +104,8 @@ void MotionDecision::task_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
   flags_.task_stop = msg->data;
   if (flags_.task_stop)
   {
-    if (params_.task_stop_sound_path != "")
-    {
-      std::string sound_command = "aplay " + params_.task_stop_sound_path + " &";
-      system(sound_command.c_str());
-      system(sound_command.c_str());
-    }
     mode_.first = "stop";
+    sound(params_.task_stop_sound_path);
   }
   else
   {
@@ -150,6 +145,16 @@ MotionDecision::select_mode(const sensor_msgs::Joy::ConstPtr &joy, const std::pa
   return std::make_pair(first_mode, second_mode);
 }
 
+void MotionDecision::sound(const std::string &path)
+{
+  if (path == "")
+    return;
+
+  const std::string sound_command = "aplay " + params_.task_stop_sound_path + " &";
+  if (system(sound_command.c_str()) == -1)
+    ROS_WARN("Failed to play sound");
+}
+
 void MotionDecision::process(void)
 {
   ros::Rate loop_rate(params_.hz);
@@ -175,9 +180,14 @@ void MotionDecision::process(void)
                 (odom_vel_.linear.x < 0.01 && fabs(odom_vel_.angular.z) < 0.01)))
       {
         if (counters_.stuck < max_stuck_count)
+        {
           counters_.stuck++;
+        }
         else
+        {
           counters_.recovery++;
+          sound(params_.recovery_sound_path);
+        }
       }
     }
     else if (mode_.second == "manual")

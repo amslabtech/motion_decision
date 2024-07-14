@@ -156,6 +156,12 @@ private:
   select_mode(const sensor_msgs::Joy::ConstPtr &msg, const std::pair<std::string, std::string> &mode);
 
   /**
+   * @brief Sound function
+   * @param [in] path Path of sound file
+   */
+  void sound(const std::string &path);
+
+  /**
    * @brief Recovery mode function
    * @details Run when stuck is detected. Move away from the nearest obstacle. Face the direction in which the
    *   LocalPlanner is comfortable moving.
