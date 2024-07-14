@@ -16,18 +16,18 @@
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Bool.h>
 #include <string>
+#include <utility>
 
 struct MotionDecisionParams
 {
   int hz;
-  int recovery_mode_threshold;
-  int trigger_count_threshold;
-  float max_speed;
+  float max_velocity;
   float max_yawrate;
   float dt;
   float predict_time;
   float collision_distance;
   float safety_collision_time;
+  float stuck_time_threshold;
   std::string stop_sound_path;
   std::string recovery_sound_path;
   std::string task_stop_sound_path;
@@ -35,36 +35,32 @@ struct MotionDecisionParams
 
 struct RecoveryParams
 {
+  bool use = true;
   float max_velocity;
   float max_yawrate;
   float velocity_resolution;
   float yawrate_resolution;
+  float time;
 };
 
 struct Flags
 {
   bool emergency_stop = false;
   bool task_stop = false;
-  bool auto_mode = false;
-  bool move_mode = false;
-  bool joy = false;
   bool intersection = false;
-  bool safety_mode = false;
   bool local_path_received = false;
-  bool enable_recovery_mode = true;
-  bool recovery_mode = false;
 };
 
 struct Counters
 {
   int stuck = 0;
-  int trigger = 0;
+  int recovery = 0;
 };
 
 struct LaserInfo
 {
-  int front_min_idx = 0;
-  int rear_min_idx = 0;
+  int front_index_of_min_range = 0;
+  int rear_index_of_min_range = 0;
   float front_min_range = -1.0;
   float rear_min_range = -1.0;
 };
@@ -96,11 +92,10 @@ private:
    * @brief Emergency stop flag callback function
    * @param [in] msg Msg from emergency_stop_flag_sub_
    */
-  void emergency_stop_flag_callback(const std_msgs::BoolConstPtr &msg);
+  void emergency_stop_flag_callback(const std_msgs::BoolConstPtr &msg) { flags_.emergency_stop = msg->data; }
 
   /**
    * @brief Front laser callback function
-   * @details Cache the closest valid sensor data and its index in front_min_range and front_min_idx respectively
    * @param [in] msg Msg from front_laser_sub_
    */
   void front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg);
@@ -113,20 +108,19 @@ private:
   void joy_callback(const sensor_msgs::JoyConstPtr &msg);
 
   /**
-   * @brief Local path velocity callback function
-   * @param [in] msg Msg from local_path_velocity_sub_
+   * @brief Cmd vel callback function
+   * @param [in] msg Msg from
    */
-  void local_path_velocity_callback(const geometry_msgs::TwistConstPtr &msg);
+  void local_path_cmd_vel_callback(const geometry_msgs::TwistConstPtr &msg);
 
   /**
    * @brief Odom callback function
    * @param [in] msg Msg from odom_sub_
    */
-  void odom_callback(const nav_msgs::OdometryConstPtr &msg);
+  void odom_callback(const nav_msgs::OdometryConstPtr &msg) { odom_vel_ = msg->twist.twist; }
 
   /**
    * @brief Rear laser callback function
-   * @details Cache the closest valid sensor data and its index in rear_min_range and rear_min_idx respectively
    * @param [in] msg Msg from rear_laser_sub_
    */
   void rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg);
@@ -135,7 +129,7 @@ private:
    * @brief Recovery mode flag callback function
    * @param [in] msg Msg from recovery_mode_flag_sub_
    */
-  void recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg);
+  void recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg) { params_of_recovery_.use = msg->data; }
 
   /**
    * @brief Task stop flag callback function
@@ -145,12 +139,12 @@ private:
   void task_stop_flag_callback(const std_msgs::BoolConstPtr &msg);
 
   /**
-   * @brief Publish velocity function
+   * @brief Cache the closest valid sensor data and its index
    * @param [in] laser Laser data
-   * @param [in] min_idx Index of the closest valid sensor data
    * @param [in] min_range Closest valid sensor data
+   * @param [in] index_of_min_range Index of the closest valid sensor data
    */
-  void search_min_range(const sensor_msgs::LaserScan &laser, int &min_idx, float &min_range);
+  void search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range);
 
   /**
    * @brief Publish velocity function
@@ -165,7 +159,7 @@ private:
    * @brief Recovery mode function
    * @details Run when stuck is detected. Move away from the nearest obstacle. Face the direction in which the
    *   LocalPlanner is comfortable moving.
-   * @param [out] cmd_vel Velocity
+   * @param [out] cmd_vel Command velocity
    * @param [in] go_back Direction of motion
    */
   void recovery_mode(geometry_msgs::Twist &cmd_vel);
@@ -185,17 +179,18 @@ private:
    * @param [in] sim_time Simulation time
    * @return std::pair<float, float> {predicted_x, predicted_y}
    */
-  std::pair<float, float> sim_by_uniform_circluar_motion(const float &velocity, const float &yawrate, const float &sim_time);
+  std::pair<float, float>
+  sim_by_uniform_circluar_motion(const float &velocity, const float &yawrate, const float &sim_time);
 
   /**
-   * @brief Publish velocity function
-   * @param [in] cmd_vel Velocity
+   * @brief Publish Cmd Vel function
+   * @param [in] cmd_vel Command velocity
    */
   void publish_cmd_vel(geometry_msgs::Twist cmd_vel);
 
   /**
    * @brief Print status function
-   * @param [in] cmd_vel Velocity
+   * @param [in] cmd_vel Command velocity
    */
   void print_status(const geometry_msgs::Twist &cmd_vel);
 
@@ -211,18 +206,17 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
   ros::Publisher intersection_flag_pub_;
-  ros::Publisher velocity_pub_;
+  ros::Publisher cmd_vel_pub_;
   ros::Subscriber emergency_stop_flag_sub_;
   ros::Subscriber front_laser_sub_;
   ros::Subscriber joy_sub_;
-  ros::Subscriber local_path_velocity_sub_;
+  ros::Subscriber local_path_cmd_vel_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber rear_laser_sub_;
   ros::Subscriber recovery_mode_flag_sub_;
   ros::Subscriber task_stop_flag_sub_;
 
   geometry_msgs::Twist cmd_vel_;
-  geometry_msgs::Twist joy_vel_;
   geometry_msgs::Twist odom_vel_;
   std::optional<sensor_msgs::LaserScan> front_laser_;
   std::optional<sensor_msgs::LaserScan> rear_laser_;
