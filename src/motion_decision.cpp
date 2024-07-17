@@ -32,6 +32,7 @@ void MotionDecision::load_params(void)
 {
   // MotionDecisionParams
   private_nh_.param<int>("hz", params_.hz, 20);
+  private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
   private_nh_.param<float>("max_yawrate", params_.max_yawrate, 1.0);
   private_nh_.param<float>("dt", params_.dt, 0.1);
@@ -58,6 +59,8 @@ void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &
 {
   front_laser_ = *msg;
   search_min_range(front_laser_.value(), laser_info_.front_min_range, laser_info_.front_index_of_min_range);
+  flags_.front_laser_updated = true;
+  counters_.not_received_front_laser = 0;
 }
 
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
@@ -69,7 +72,7 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
     cmd_vel_.linear.x = msg->buttons[4] ? msg->axes[1] * params_.max_velocity : 0.0;
     cmd_vel_.angular.z = msg->buttons[4] ? msg->axes[0] * params_.max_yawrate : 0.0;
   }
-  else if (mode_.first == "move" && mode_.second == "auto" && !flags_.local_path_received)
+  else if (mode_.first == "move" && mode_.second == "auto" && !flags_.local_path_updated)
   {
     cmd_vel_ = geometry_msgs::Twist();
   }
@@ -91,13 +94,15 @@ void MotionDecision::local_path_cmd_vel_callback(const geometry_msgs::TwistConst
 {
   if (mode_.first == "move" && mode_.second == "auto")
     cmd_vel_ = *msg;
-  flags_.local_path_received = true;
+  flags_.local_path_updated = true;
 }
 
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
   rear_laser_ = *msg;
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
+  flags_.rear_laser_updated = true;
+  counters_.not_received_rear_laser = 0;
 }
 
 void MotionDecision::task_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
@@ -174,7 +179,7 @@ void MotionDecision::process(void)
       {
         counters_.stuck = 0;
         counters_.recovery = 0;
-        if (!flags_.local_path_received)
+        if (!flags_.local_path_updated)
           cmd_vel_ = geometry_msgs::Twist();
       }
       else if (((cmd_vel_.linear.x < DBL_EPSILON && fabs(cmd_vel_.angular.z) < DBL_EPSILON) ||
@@ -199,14 +204,27 @@ void MotionDecision::process(void)
 
     publish_cmd_vel(cmd_vel_);
 
-    front_laser_.reset();
-    rear_laser_.reset();
-    laser_info_.front_min_range = -1.0;
-    laser_info_.rear_min_range = -1.0;
-    flags_.local_path_received = false;
+    flags_.front_laser_updated = false;
+    flags_.rear_laser_updated = false;
+    flags_.local_path_updated = false;
 
     loop_rate.sleep();
     ros::spinOnce();
+
+    if (!flags_.front_laser_updated)
+      counters_.not_received_front_laser++;
+    if (!flags_.rear_laser_updated)
+      counters_.not_received_rear_laser++;
+    if (params_.allowable_num_of_not_received < counters_.not_received_front_laser)
+    {
+      front_laser_.reset();
+      laser_info_.front_min_range = -1.0;
+    }
+    if (params_.allowable_num_of_not_received < counters_.not_received_rear_laser)
+    {
+      rear_laser_.reset();
+      laser_info_.rear_min_range = -1.0;
+    }
   }
 }
 
