@@ -35,7 +35,8 @@ struct MotionDecisionParams
 
 struct RecoveryParams
 {
-  bool use = true;
+  bool use;
+  bool sim_back;
   float max_velocity;
   float max_yawrate;
   float velocity_resolution;
@@ -169,9 +170,10 @@ private:
    * @details Run when stuck is detected. Move away from the nearest obstacle. Face the direction in which the
    *   LocalPathPlanner is comfortable moving.
    * @param [in] cmd_vel Command velocity
+   * @param [in] sim_back Flag to simulate back
    * @return geometry_msgs::Twist Command velocity
    */
-  geometry_msgs::Twist recovery_mode(geometry_msgs::Twist cmd_vel);
+  geometry_msgs::Twist recovery_mode(geometry_msgs::Twist cmd_vel, const bool sim_back = true);
 
   /**
    * @brief Calculate TTC (Time To Collision) function

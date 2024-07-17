@@ -17,6 +17,7 @@
     <arg name="task_stop_sound_path" default="$(find motion_decision)/sounds/decision4.wav"/>
     <!-- RecoveryParams -->
     <arg name="recovery/use" default="true"/>
+    <arg name="recovery/sim_back" default="true"/>
     <arg name="recovery/max_velocity" default="0.3"/>
     <arg name="recovery/max_yawrate" default="0.3"/>
     <arg name="recovery/velocity_resolution" default="0.1"/>
@@ -47,6 +48,7 @@
         <param name="task_stop_sound_path" value="$(arg task_stop_sound_path)"/>
         <!-- RecoveryParams -->
         <param name="recovery/use" value="$(arg recovery/use)"/>
+        <param name="recovery/sim_back" value="$(arg recovery/sim_back)"/>
         <param name="recovery/max_velocity" value="$(arg recovery/max_velocity)"/>
         <param name="recovery/max_yawrate" value="$(arg recovery/max_yawrate)"/>
         <param name="recovery/velocity_resolution" value="$(arg recovery/velocity_resolution)"/>

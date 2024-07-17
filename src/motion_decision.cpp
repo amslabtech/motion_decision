@@ -45,6 +45,7 @@ void MotionDecision::load_params(void)
 
   // RecoveryParams
   private_nh_.param<bool>("recovery/use", params_of_recovery_.use, true);
+  private_nh_.param<bool>("recovery/sim_back", params_of_recovery_.sim_back, true);
   private_nh_.param<float>("recovery/max_velocity", params_of_recovery_.max_velocity, 0.3);
   private_nh_.param<float>("recovery/max_yawrate", params_of_recovery_.max_yawrate, 0.3);
   private_nh_.param<float>("recovery/velocity_resolution", params_of_recovery_.velocity_resolution, 0.1);
@@ -167,7 +168,7 @@ void MotionDecision::process(void)
     {
       if (0 < counters_.recovery && counters_.recovery < max_recovery_count)
       {
-        cmd_vel_ = recovery_mode(cmd_vel_);
+        cmd_vel_ = recovery_mode(cmd_vel_, params_of_recovery_.sim_back);
       }
       else if (max_recovery_count <= counters_.recovery)
       {
@@ -209,14 +210,13 @@ void MotionDecision::process(void)
   }
 }
 
-geometry_msgs::Twist MotionDecision::recovery_mode(geometry_msgs::Twist cmd_vel)
+geometry_msgs::Twist MotionDecision::recovery_mode(geometry_msgs::Twist cmd_vel, const bool sim_back)
 {
   counters_.recovery++;
   if (!front_laser_.has_value() || !rear_laser_.has_value())
     return geometry_msgs::Twist();
 
   // select data by direction of motion
-  const bool sim_back = 0.0 < cmd_vel.linear.x;
   const sensor_msgs::LaserScan laser = sim_back ? front_laser_.value() : rear_laser_.value();
   const int index_of_min_range = sim_back ? laser_info_.front_index_of_min_range : laser_info_.rear_index_of_min_range;
   const float max_velocity = sim_back ? -params_of_recovery_.max_velocity : params_of_recovery_.max_velocity;
@@ -236,7 +236,8 @@ geometry_msgs::Twist MotionDecision::recovery_mode(geometry_msgs::Twist cmd_vel)
     for (float yawrate = -params_of_recovery_.max_yawrate; yawrate <= params_of_recovery_.max_yawrate;
          yawrate += params_of_recovery_.yawrate_resolution)
     {
-      const float ttc = calc_ttc(velocity, yawrate, laser);
+      const float ttc = sim_back ? calc_ttc(velocity, yawrate, rear_laser_.value())
+                                 : calc_ttc(velocity, yawrate, front_laser_.value());
       if (ttc > max_ttc && ttc > params_.safety_collision_time)
       {
         cmd_vel.linear.x = velocity;
