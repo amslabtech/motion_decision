@@ -195,6 +195,10 @@ void MotionDecision::process(void)
           sound(params_.recovery_sound_path);
         }
       }
+      else
+      {
+        counters_.stuck = 0;
+      }
     }
     else if (mode_.second == "manual")
     {
