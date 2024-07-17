@@ -1,36 +1,66 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="hz" default="10"/>
-    <arg name="max_speed" default="1.0"/>
+    <arg name="ns" default="local_planner"/>
+    <arg name="output" default="log" doc="screen or log"/>
+
+    <!-- MotionDecisionParams -->
+    <arg name="hz" default="20"/>
+    <arg name="max_velocity" default="1.0"/>
     <arg name="max_yawrate" default="1.0"/>
-    <arg name="vel_ratio" default="0.5"/>
-    <arg name="safety_distance" default="0.6"/>
-    <arg name="goal_distance" default="0.2"/>
-    <arg name="collision_distance" default="0.4"/>
     <arg name="dt" default="0.1"/>
-    <arg name="predict_time" default="2.0"/>
+    <arg name="predict_time" default="1.0"/>
+    <arg name="collision_distance" default="0.4"/>
     <arg name="safety_collision_time" default="0.5"/>
-    <arg name="recovery_mode_threshold" default="60"/>
-    <arg name="trigger_count_threshold" default="2"/>
+    <arg name="stuck_time_threshold" default="1.0"/>
     <arg name="stop_sound_path" default="$(find motion_decision)/sounds/warning1.wav"/>
     <arg name="recovery_sound_path" default="$(find motion_decision)/sounds/warning2.wav"/>
     <arg name="task_stop_sound_path" default="$(find motion_decision)/sounds/decision4.wav"/>
+    <!-- RecoveryParams -->
+    <arg name="recovery/use" default="true"/>
+    <arg name="recovery/sim_back" default="true"/>
+    <arg name="recovery/max_velocity" default="0.3"/>
+    <arg name="recovery/max_yawrate" default="0.3"/>
+    <arg name="recovery/velocity_resolution" default="0.1"/>
+    <arg name="recovery/yawrate_resolution" default="0.1"/>
+    <arg name="recovery/spin_turn_speed" default="0.2"/>
+    <arg name="recovery/time" default="3.0"/>
+    <!-- Published topic -->
+    <arg name="cmd_vel" default="/cmd_vel"/>
+    <!-- Subscribed topics -->
+    <arg name="local_path/cmd_vel" default="/local_path/cmd_vel"/>
+    <arg name="odom" default="/odom"/>
+    <arg name="front_laser/scan" default="/front_laser/scan"/>
+    <arg name="rear_laser/scan" default="/rear_laser/scan"/>
 
-    <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="local_planner" respawn="true">
-        <param name="HZ" value="$(arg hz)" type="int"/>
-        <param name="MAX_SPEED" value="$(arg max_speed)" type="double"/>
-        <param name="MAX_YAWRATE" value="$(arg max_yawrate)" type="double"/>
-        <param name="VEL_RATIO" value="$(arg vel_ratio)" type="double"/>
-        <param name="GOAL_DISTANCE" value="$(arg goal_distance)" type="double"/>
-        <param name="COLLISION_DISTANCE" value="$(arg collision_distance)" type="double"/>
-        <param name="DT" value="$(arg dt)" type="double"/>
-        <param name="PREDICT_TIME" value="$(arg predict_time)" type="double"/>
-        <param name="SAFETY_COLLISION_TIME" value="$(arg safety_collision_time)" type="double"/>
-        <param name="RECOVERY_MODE_THRESHOLD" value="$(arg recovery_mode_threshold)" type="int"/>
-        <param name="TRIGGER_COUNT_THRESHOLD" value="$(arg trigger_count_threshold)" type="int"/>
-        <param name="STOP_SOUND_PATH" value="$(arg stop_sound_path)"/>
-        <param name="RECOVERY_SOUND_PATH" value="$(arg recovery_sound_path)"/>
-        <param name="TASK_STOP_SOUND_PATH" value="$(arg task_stop_sound_path)"/>
-        <remap from="/cmd_vel" to="/cmd_vel"/>
+    <!-- run motion_decision node -->
+    <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="$(arg ns)" output="$(arg output)" respawn="true">
+        <!-- MotionDecisionParams -->
+        <param name="hz" value="$(arg hz)"/>
+        <param name="max_velocity" value="$(arg max_velocity)"/>
+        <param name="max_yawrate" value="$(arg max_yawrate)"/>
+        <param name="dt" value="$(arg dt)"/>
+        <param name="predict_time" value="$(arg predict_time)"/>
+        <param name="collision_distance" value="$(arg collision_distance)"/>
+        <param name="safety_collision_time" value="$(arg safety_collision_time)"/>
+        <param name="stuck_time_threshold" value="$(arg stuck_time_threshold)"/>
+        <param name="stop_sound_path" value="$(arg stop_sound_path)"/>
+        <param name="recovery_sound_path" value="$(arg recovery_sound_path)"/>
+        <param name="task_stop_sound_path" value="$(arg task_stop_sound_path)"/>
+        <!-- RecoveryParams -->
+        <param name="recovery/use" value="$(arg recovery/use)"/>
+        <param name="recovery/sim_back" value="$(arg recovery/sim_back)"/>
+        <param name="recovery/max_velocity" value="$(arg recovery/max_velocity)"/>
+        <param name="recovery/max_yawrate" value="$(arg recovery/max_yawrate)"/>
+        <param name="recovery/velocity_resolution" value="$(arg recovery/velocity_resolution)"/>
+        <param name="recovery/yawrate_resolution" value="$(arg recovery/yawrate_resolution)"/>
+        <param name="recovery/spin_turn_speed" value="$(arg recovery/spin_turn_speed)"/>
+        <param name="recovery/time" value="$(arg recovery/time)"/>
+        <!-- Published topic -->
+        <remap from="/cmd_vel" to="$(arg cmd_vel)"/>
+        <!-- Subscribed topics -->
+        <remap from="/local_path/cmd_vel" to="$(arg local_path/cmd_vel)"/>
+        <remap from="/odom" to="$(arg odom)"/>
+        <remap from="/front_laser/scan" to="$(arg front_laser/scan)"/>
+        <remap from="/rear_laser/scan" to="$(arg rear_laser/scan)"/>
     </node>
 </launch>
