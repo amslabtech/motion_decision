@@ -21,6 +21,7 @@
 struct MotionDecisionParams
 {
   int hz;
+  int allowable_num_of_not_received;
   float max_velocity;
   float max_yawrate;
   float dt;
@@ -50,13 +51,17 @@ struct Flags
   bool emergency_stop = false;
   bool task_stop = false;
   bool intersection = false;
-  bool local_path_received = false;
+  bool local_path_updated = false;
+  bool front_laser_updated = false;
+  bool rear_laser_updated = false;
 };
 
 struct Counters
 {
   int stuck = 0;
   int recovery = 0;
+  int not_received_front_laser = 0;
+  int not_received_rear_laser = 0;
 };
 
 struct LaserInfo
