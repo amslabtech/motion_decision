@@ -250,9 +250,8 @@ geometry_msgs::Twist MotionDecision::recovery_mode(geometry_msgs::Twist cmd_vel,
   cmd_vel.linear.x = 0.0;
   cmd_vel.angular.z = index_of_min_range < laser.ranges.size() / 2 ? params_of_recovery_.spin_turn_speed
                                                                    : -params_of_recovery_.spin_turn_speed;
-  cmd_vel.linear.z *= sim_back ? 1.0 : -1.0;
   const float obs_angle = laser.angle_min + index_of_min_range * laser.angle_increment;
-  const bool obs_found_in_direction_of_travel = obs_angle < M_PI / 2.0;
+  const bool obs_found_in_direction_of_travel = fabs(obs_angle) < M_PI / 2.0;
   for (float velocity = velocity_resolution; fabs(velocity) <= fabs(max_velocity); velocity += velocity_resolution)
   {
     for (float yawrate = -params_of_recovery_.max_yawrate; yawrate <= params_of_recovery_.max_yawrate;
