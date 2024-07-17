@@ -45,7 +45,7 @@ void MotionDecision::load_params(void)
   private_nh_.param<std::string>("task_stop_sound_path", params_.task_stop_sound_path, std::string(""));
 
   // RecoveryParams
-  private_nh_.param<bool>("recovery/use", params_of_recovery_.use, true);
+  private_nh_.param<bool>("recovery/available", params_of_recovery_.available, true);
   private_nh_.param<bool>("recovery/sim_back", params_of_recovery_.sim_back, true);
   private_nh_.param<float>("recovery/max_velocity", params_of_recovery_.max_velocity, 0.3);
   private_nh_.param<float>("recovery/max_yawrate", params_of_recovery_.max_yawrate, 0.3);
@@ -169,7 +169,7 @@ void MotionDecision::process(void)
   while (ros::ok())
   {
     // detect stuck and recover for a certain period of time
-    if (mode_.first == "move" && mode_.second == "auto" && params_of_recovery_.use)
+    if (mode_.first == "move" && mode_.second == "auto" && params_of_recovery_.available)
     {
       if (0 < counters_.recovery && counters_.recovery < max_recovery_count)
       {
@@ -381,9 +381,16 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
   }
   std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
   std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
-  std::cout << "recovery time   : " << counters_.recovery / static_cast<float>(params_.hz) << std::endl;
-  if (0 < counters_.stuck)
+  if (params_of_recovery_.available)
+  {
+    std::cout << "recovery mode   : available" << std::endl;
+    std::cout << "recovery time   : " << counters_.recovery / static_cast<float>(params_.hz) << std::endl;
     std::cout << "stuck time      : " << counters_.stuck / static_cast<float>(params_.hz) << std::endl;
+  }
+  else
+  {
+    std::cout << "recovery mode   : unavailable" << std::endl;
+  }
   if (mode_.first == "move")
   {
     std::cout << "cmd vel :" << std::endl;
