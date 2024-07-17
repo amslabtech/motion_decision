@@ -36,7 +36,7 @@ struct MotionDecisionParams
 
 struct RecoveryParams
 {
-  bool use;
+  bool available;
   bool sim_back;
   float max_velocity;
   float max_yawrate;
@@ -139,7 +139,7 @@ private:
    * @details This is not flag to run recovery mode. This is flag to use recovery mode.
    * @param [in] msg Msg of recovery mode flag
    */
-  void recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg) { params_of_recovery_.use = msg->data; }
+  void recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg) { params_of_recovery_.available = msg->data; }
 
   /**
    * @brief Task stop flag callback function
