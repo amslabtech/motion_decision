@@ -156,7 +156,7 @@ void MotionDecision::sound(const std::string &path)
   if (path == "")
     return;
 
-  const std::string sound_command = "aplay " + params_.task_stop_sound_path + " &";
+  const std::string sound_command = "aplay " + path + " &";
   if (system(sound_command.c_str()) == -1)
     ROS_WARN("Failed to play sound");
 }
