@@ -348,13 +348,13 @@ void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
 {
   std::cout << "=== " << mode_.second << " (" << mode_.first << ") ===" << std::endl;
-  if (0 < counters_.recovery)
+  if (0 < counters_.recovery && params_of_recovery_.available)
   {
     std::cout << "#####################" << std::endl;
     std::cout << "### recovery mode ###" << std::endl;
     std::cout << "#####################" << std::endl;
   }
-  else if (0 < counters_.stuck)
+  else if (0 < counters_.stuck && params_of_recovery_.available)
   {
     std::cout << "################" << std::endl;
     std::cout << "### stuck!!! ###" << std::endl;
