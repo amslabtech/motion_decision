@@ -13,9 +13,11 @@
 
 ## Subscribed topics
 - /local_path/cmd_vel (geometry_msgs/Twist)
-- /task/stop (std_msgs/Bool)
 - /emergency_stop (std_msgs/Bool)
 - /joy (sensor_msgs/Joy)
+
+### services
+- /task/stop (std_srvs/SetBool)
 
 ## Parameters
 - hz
