@@ -15,6 +15,7 @@
 #include <sensor_msgs/Joy.h>
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Bool.h>
+#include <std_srvs/SetBool.h>
 #include <string>
 #include <utility>
 
@@ -142,10 +143,12 @@ private:
   void recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg) { params_of_recovery_.available = msg->data; }
 
   /**
-   * @brief Task stop flag callback function
-   * @param [in] msg Msg of task stop flag
+   * @brief Task stop flag service callback function
+   * @param [in] req Request of task stop flag
+   * @param [out] res Response of task stop flag
+   * @return bool Result of service
    */
-  void task_stop_flag_callback(const std_msgs::BoolConstPtr &msg);
+  bool task_stop_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 
   /**
    * @brief Cache the closest sensor data and its index
@@ -231,7 +234,7 @@ private:
   ros::Subscriber odom_sub_;
   ros::Subscriber rear_laser_sub_;
   ros::Subscriber recovery_mode_flag_sub_;
-  ros::Subscriber task_stop_flag_sub_;
+  ros::ServiceServer task_stop_flag_server_;
 
   geometry_msgs::Twist cmd_vel_;
   geometry_msgs::Twist odom_vel_;
