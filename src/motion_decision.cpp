@@ -23,7 +23,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
   rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
   recovery_mode_flag_sub_ = nh_.subscribe("/recovery_mode_flag", 1, &MotionDecision::recovery_mode_flag_callback, this);
-  task_stop_flag_sub_ = nh_.subscribe("/task/stop", 1, &MotionDecision::task_stop_flag_callback, this);
+  task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
 
   load_params();
 }
@@ -105,18 +105,22 @@ void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &m
   counters_.not_received_rear_laser = 0;
 }
 
-void MotionDecision::task_stop_flag_callback(const std_msgs::BoolConstPtr &msg)
+bool MotionDecision::task_stop_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
 {
-  flags_.task_stop = msg->data;
+  flags_.task_stop = req.data;
+  res.success = true;
   if (flags_.task_stop)
   {
     mode_.first = "stop";
     sound(params_.task_stop_sound_path);
+    res.message = "Robot has stopped..";
   }
   else
   {
     mode_.first = "move";
+    res.message = "Robot has started moving..";
   }
+  return true;
 }
 
 void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range)
@@ -366,6 +370,8 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
     std::cout << "### emergency stop ###" << std::endl;
     std::cout << "######################" << std::endl;
   }
+  if (mode_.first == "move")
+    flags_.task_stop = false;
   if (flags_.task_stop)
   {
     std::cout << "#################" << std::endl;
