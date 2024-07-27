@@ -31,6 +31,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
 void MotionDecision::load_params(void)
 {
   // MotionDecisionParams
+  private_nh_.param<bool>("use_rear_laser", params_.use_rear_laser, true);
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
@@ -342,8 +343,19 @@ void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 
   if (flags_.emergency_stop || mode_.first == "stop")
     cmd_vel = geometry_msgs::Twist();
-  if (mode_.first == "move" && mode_.second == "auto" && (!front_laser_.has_value() || !rear_laser_.has_value()))
-    cmd_vel = geometry_msgs::Twist();
+  if (mode_.first == "move" && mode_.second == "auto")
+  {
+    if (!front_laser_.has_value())
+    {
+      ROS_ERROR("Front laser data is not available..");
+      cmd_vel = geometry_msgs::Twist();
+    }
+    if (!rear_laser_.has_value() && params_.use_rear_laser)
+    {
+      ROS_ERROR("Rear laser data is not available..");
+      cmd_vel = geometry_msgs::Twist();
+    }
+  }
 
   cmd_vel_pub_.publish(cmd_vel);
   print_status(cmd_vel);
@@ -385,7 +397,8 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
     std::cout << "####################" << std::endl;
   }
   std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
-  std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
+  if (params_.use_rear_laser)
+    std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
   if (params_of_recovery_.available)
   {
     std::cout << "recovery mode   : available" << std::endl;

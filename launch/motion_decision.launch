@@ -4,6 +4,7 @@
     <arg name="output" default="log" doc="screen or log"/>
 
     <!-- MotionDecisionParams -->
+    <arg name="use_rear_laser" default="true"/>
     <arg name="hz" default="20"/>
     <arg name="allowable_num_of_not_received" default="3"/>
     <arg name="max_velocity" default="1.0"/>
@@ -36,6 +37,7 @@
     <!-- run motion_decision node -->
     <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="$(arg ns)" output="$(arg output)" respawn="true">
         <!-- MotionDecisionParams -->
+        <param name="use_rear_laser" value="$(arg use_rear_laser)"/>
         <param name="hz" value="$(arg hz)"/>
         <param name="allowable_num_of_not_received" value="$(arg allowable_num_of_not_received)"/>
         <param name="max_velocity" value="$(arg max_velocity)"/>

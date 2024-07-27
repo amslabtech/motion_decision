@@ -21,6 +21,7 @@
 
 struct MotionDecisionParams
 {
+  bool use_rear_laser;
   int hz;
   int allowable_num_of_not_received;
   float max_velocity;
