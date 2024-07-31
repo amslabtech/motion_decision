@@ -22,7 +22,8 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   local_path_cmd_vel_sub_ = nh_.subscribe("/local_path/cmd_vel", 1, &MotionDecision::local_path_cmd_vel_callback, this);
   odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
   rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
-  recovery_mode_flag_sub_ = nh_.subscribe("/recovery_mode_flag", 1, &MotionDecision::recovery_mode_flag_callback, this);
+
+  recovery_mode_flag_server_ = nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
   task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
 
   load_params();
@@ -104,6 +105,17 @@ void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &m
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
+}
+
+bool MotionDecision::recovery_mode_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
+{
+  params_of_recovery_.available = req.data;
+  res.success = true;
+  if (params_of_recovery_.available)
+      res.message = "Recovery mode is available..";
+  else
+      res.message = "Recovery mode is unavailable..";
+  return true;
 }
 
 bool MotionDecision::task_stop_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
