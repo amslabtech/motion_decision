@@ -139,9 +139,11 @@ private:
   /**
    * @brief Recovery mode flag callback function
    * @details This is not flag to run recovery mode. This is flag to use recovery mode.
-   * @param [in] msg Msg of recovery mode flag
+   * @param [in] req Request of recovery mode flag
+   * @param [out] res Response of recovery mode flag
+   * @return bool Result of service
    */
-  void recovery_mode_flag_callback(const std_msgs::Bool::ConstPtr &msg) { params_of_recovery_.available = msg->data; }
+  bool recovery_mode_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
 
   /**
    * @brief Task stop flag service callback function
@@ -234,7 +236,7 @@ private:
   ros::Subscriber local_path_cmd_vel_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber rear_laser_sub_;
-  ros::Subscriber recovery_mode_flag_sub_;
+  ros::ServiceServer recovery_mode_flag_server_;
   ros::ServiceServer task_stop_flag_server_;
 
   geometry_msgs::Twist cmd_vel_;
