@@ -23,7 +23,8 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
   rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
 
-  recovery_mode_flag_server_ = nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
+  recovery_mode_flag_server_ =
+      nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
   task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
 
   load_params();
@@ -112,9 +113,9 @@ bool MotionDecision::recovery_mode_flag_callback(std_srvs::SetBool::Request &req
   params_of_recovery_.available = req.data;
   res.success = true;
   if (params_of_recovery_.available)
-      res.message = "Recovery mode is available..";
+    res.message = "Recovery mode is available..";
   else
-      res.message = "Recovery mode is unavailable..";
+    res.message = "Recovery mode is unavailable..";
   return true;
 }
 
