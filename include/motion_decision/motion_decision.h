@@ -8,6 +8,10 @@
 #ifndef MOTION_DECISION_MOTION_DECISION_H
 #define MOTION_DECISION_MOTION_DECISION_H
 
+#define RESET_COLOR "\033[0m"
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <optional>
@@ -56,6 +60,7 @@ struct Flags
   bool local_path_updated = false;
   bool front_laser_updated = false;
   bool rear_laser_updated = false;
+  bool move_trigger = false;
 };
 
 struct Counters
@@ -210,6 +215,13 @@ private:
    * @param [in] cmd_vel Command velocity
    */
   void publish_cmd_vel(geometry_msgs::Twist cmd_vel);
+
+  /**
+   * @brief Print mode status function
+   * @param [in] status Status
+   * @param [in] color Color
+   */
+  void print_mode_status(const std::string &status = "", std::string color = "");
 
   /**
    * @brief Print status function

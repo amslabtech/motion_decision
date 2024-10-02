@@ -72,8 +72,9 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
 
   if (mode_.first == "move" && mode_.second == "manual")
   {
-    cmd_vel_.linear.x = msg->buttons[4] ? msg->axes[1] * params_.max_velocity : 0.0;
-    cmd_vel_.angular.z = msg->buttons[4] ? msg->axes[0] * params_.max_yawrate : 0.0;
+    flags_.move_trigger = msg->buttons[4];
+    cmd_vel_.linear.x = flags_.move_trigger ? msg->axes[1] * params_.max_velocity : 0.0;
+    cmd_vel_.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
   }
   else if (mode_.first == "move" && mode_.second == "auto" && !flags_.local_path_updated)
   {
@@ -91,6 +92,9 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
   {
     flags_.intersection = false;
   }
+
+  if (mode_.first == "move")
+    flags_.task_stop = false;
 }
 
 void MotionDecision::local_path_cmd_vel_callback(const geometry_msgs::TwistConstPtr &msg)
@@ -218,7 +222,7 @@ void MotionDecision::process(void)
         counters_.stuck = 0;
       }
     }
-    else if (mode_.second == "manual")
+    else if (mode_.second == "manual" || mode_.first == "stop")
     {
       counters_.stuck = 0;
       counters_.recovery = 0;
@@ -374,9 +378,29 @@ void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
   print_status(cmd_vel);
 }
 
+void MotionDecision::print_mode_status(const std::string &status, std::string color)
+{
+  if (color == "")
+    color = RESET_COLOR;
+  const std::string parrentheses = status == "" ? ")" : ") ";
+  std::cout << "=== " << mode_.second << " (" << mode_.first << parrentheses << color << status << RESET_COLOR
+            << " ===" << std::endl;
+}
+
 void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
 {
-  std::cout << "=== " << mode_.second << " (" << mode_.first << ") ===" << std::endl;
+  if (mode_.first == "move" && mode_.second == "manual")
+  {
+    if (flags_.move_trigger)
+      print_mode_status("UNLOCKED", GREEN);
+    else
+      print_mode_status("LOCKED", RED);
+  }
+  else
+  {
+    print_mode_status();
+  }
+
   if (0 < counters_.recovery && params_of_recovery_.available)
   {
     std::cout << "#####################" << std::endl;
@@ -395,8 +419,6 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
     std::cout << "### emergency stop ###" << std::endl;
     std::cout << "######################" << std::endl;
   }
-  if (mode_.first == "move")
-    flags_.task_stop = false;
   if (flags_.task_stop)
   {
     std::cout << "#################" << std::endl;
@@ -409,9 +431,17 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
     std::cout << "### intersection ###" << std::endl;
     std::cout << "####################" << std::endl;
   }
-  std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
+  if (laser_info_.front_min_range == -1.0)
+    std::cout << "min front laser : " << RED << laser_info_.front_min_range << RESET_COLOR << std::endl;
+  else
+    std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
   if (params_.use_rear_laser)
-    std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
+  {
+    if (laser_info_.front_min_range == -1.0)
+      std::cout << "min rear laser : " << RED << laser_info_.rear_min_range << RESET_COLOR << std::endl;
+    else
+      std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
+  }
   if (params_of_recovery_.available)
   {
     std::cout << "recovery mode   : available" << std::endl;
