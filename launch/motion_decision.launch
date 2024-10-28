@@ -8,7 +8,7 @@
     <arg name="hz" default="20"/>
     <arg name="allowable_num_of_not_received" default="3"/>
     <arg name="max_velocity" default="1.0"/>
-    <arg name="turbe_max_velocity" default="1.66"/>
+    <arg name="turbo_max_velocity" default="1.66"/>
     <arg name="max_yawrate" default="1.0"/>
     <arg name="dt" default="0.1"/>
     <arg name="predict_time" default="1.0"/>
@@ -42,6 +42,7 @@
         <param name="hz" value="$(arg hz)"/>
         <param name="allowable_num_of_not_received" value="$(arg allowable_num_of_not_received)"/>
         <param name="max_velocity" value="$(arg max_velocity)"/>
+        <param name="turbo_max_velocity" value="$(arg turbo_max_velocity)"/>
         <param name="max_yawrate" value="$(arg max_yawrate)"/>
         <param name="dt" value="$(arg dt)"/>
         <param name="predict_time" value="$(arg predict_time)"/>
