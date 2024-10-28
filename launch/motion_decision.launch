@@ -8,6 +8,7 @@
     <arg name="hz" default="20"/>
     <arg name="allowable_num_of_not_received" default="3"/>
     <arg name="max_velocity" default="1.0"/>
+    <arg name="turbe_max_velocity" default="1.66"/>
     <arg name="max_yawrate" default="1.0"/>
     <arg name="dt" default="0.1"/>
     <arg name="predict_time" default="1.0"/>
