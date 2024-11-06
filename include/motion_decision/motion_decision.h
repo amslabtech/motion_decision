@@ -11,6 +11,7 @@
 #define RESET_COLOR "\033[0m"
 #define RED "\033[31m"
 #define GREEN "\033[32m"
+#define CYAN "\033[36m"
 
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
@@ -29,6 +30,7 @@ struct MotionDecisionParams
   int hz;
   int allowable_num_of_not_received;
   float max_velocity;
+  float turbo_max_velocity;
   float max_yawrate;
   float dt;
   float predict_time;
@@ -61,6 +63,7 @@ struct Flags
   bool front_laser_updated = false;
   bool rear_laser_updated = false;
   bool move_trigger = false;
+  bool turbo_trigger = false;
 };
 
 struct Counters
