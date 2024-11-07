@@ -37,6 +37,7 @@ void MotionDecision::load_params(void)
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
+  private_nh_.param<float>("turbo_max_velocity", params_.turbo_max_velocity, 1.66);
   private_nh_.param<float>("max_yawrate", params_.max_yawrate, 1.0);
   private_nh_.param<float>("dt", params_.dt, 0.1);
   private_nh_.param<float>("predict_time", params_.predict_time, 1.0);
@@ -73,8 +74,17 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
   if (mode_.first == "move" && mode_.second == "manual")
   {
     flags_.move_trigger = msg->buttons[4];
-    cmd_vel_.linear.x = flags_.move_trigger ? msg->axes[1] * params_.max_velocity : 0.0;
-    cmd_vel_.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
+    flags_.turbo_trigger = (flags_.move_trigger && msg->axes[2] == -1.0);
+    if (flags_.turbo_trigger)
+    {
+      cmd_vel_.linear.x = flags_.move_trigger ? msg->axes[1] * params_.turbo_max_velocity : 0.0;
+      cmd_vel_.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
+    }
+    else
+    {
+      cmd_vel_.linear.x = flags_.move_trigger ? msg->axes[1] * params_.max_velocity : 0.0;
+      cmd_vel_.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
+    }
   }
   else if (mode_.first == "move" && mode_.second == "auto" && !flags_.local_path_updated)
   {
@@ -353,10 +363,20 @@ MotionDecision::sim_by_uniform_circluar_motion(const float &velocity, const floa
 
 void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 {
-  cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, static_cast<double>(params_.max_velocity))
-                                            : std::max(cmd_vel.linear.x, static_cast<double>(-params_.max_velocity));
-  cmd_vel.angular.z = 0.0 < cmd_vel.angular.z ? std::min(cmd_vel.angular.z, static_cast<double>(params_.max_yawrate))
-                                              : std::max(cmd_vel.angular.z, -static_cast<double>(params_.max_yawrate));
+  if (flags_.turbo_trigger)
+  {
+      cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, static_cast<double>(params_.turbo_max_velocity))
+                                                : std::max(cmd_vel.linear.x, static_cast<double>(-params_.turbo_max_velocity));
+      cmd_vel.angular.z = 0.0 < cmd_vel.angular.z ? std::min(cmd_vel.angular.z, static_cast<double>(params_.max_yawrate))
+                                                  : std::max(cmd_vel.angular.z, -static_cast<double>(params_.max_yawrate));
+  }
+  else
+  {
+      cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, static_cast<double>(params_.max_velocity))
+                                                : std::max(cmd_vel.linear.x, static_cast<double>(-params_.max_velocity));
+      cmd_vel.angular.z = 0.0 < cmd_vel.angular.z ? std::min(cmd_vel.angular.z, static_cast<double>(params_.max_yawrate))
+                                                  : std::max(cmd_vel.angular.z, -static_cast<double>(params_.max_yawrate));
+  }
 
   if (flags_.emergency_stop || mode_.first == "stop")
     cmd_vel = geometry_msgs::Twist();
@@ -391,7 +411,9 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
 {
   if (mode_.first == "move" && mode_.second == "manual")
   {
-    if (flags_.move_trigger)
+    if (flags_.turbo_trigger)
+      print_mode_status("TURBO", CYAN);
+    else if (flags_.move_trigger)
       print_mode_status("UNLOCKED", GREEN);
     else
       print_mode_status("LOCKED", RED);
