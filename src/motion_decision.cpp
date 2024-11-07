@@ -362,7 +362,6 @@ MotionDecision::sim_by_uniform_circluar_motion(const float &velocity, const floa
 }
 
 void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
-void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 {
   if (flags_.turbo_trigger)
   {
