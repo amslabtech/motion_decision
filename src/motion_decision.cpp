@@ -362,20 +362,37 @@ MotionDecision::sim_by_uniform_circluar_motion(const float &velocity, const floa
 }
 
 void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
+void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 {
   if (flags_.turbo_trigger)
   {
-      cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, static_cast<double>(params_.turbo_max_velocity))
-                                                : std::max(cmd_vel.linear.x, static_cast<double>(-params_.turbo_max_velocity));
-      cmd_vel.angular.z = 0.0 < cmd_vel.angular.z ? std::min(cmd_vel.angular.z, static_cast<double>(params_.max_yawrate))
-                                                  : std::max(cmd_vel.angular.z, -static_cast<double>(params_.max_yawrate));
+    cmd_vel.linear.x =
+        0.0 < cmd_vel.linear.x
+            ? std::min(cmd_vel.linear.x,
+                       static_cast<double>(params_.turbo_max_velocity))
+            : std::max(cmd_vel.linear.x,
+                       static_cast<double>(-params_.turbo_max_velocity));
+    cmd_vel.angular.z =
+        0.0 < cmd_vel.angular.z
+            ? std::min(cmd_vel.angular.z,
+                       static_cast<double>(params_.max_yawrate))
+            : std::max(cmd_vel.angular.z,
+                       -static_cast<double>(params_.max_yawrate));
   }
   else
   {
-      cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, static_cast<double>(params_.max_velocity))
-                                                : std::max(cmd_vel.linear.x, static_cast<double>(-params_.max_velocity));
-      cmd_vel.angular.z = 0.0 < cmd_vel.angular.z ? std::min(cmd_vel.angular.z, static_cast<double>(params_.max_yawrate))
-                                                  : std::max(cmd_vel.angular.z, -static_cast<double>(params_.max_yawrate));
+    cmd_vel.linear.x =
+        0.0 < cmd_vel.linear.x
+            ? std::min(cmd_vel.linear.x,
+                       static_cast<double>(params_.max_velocity))
+            : std::max(cmd_vel.linear.x,
+                       static_cast<double>(-params_.max_velocity));
+    cmd_vel.angular.z =
+        0.0 < cmd_vel.angular.z
+            ? std::min(cmd_vel.angular.z,
+                       static_cast<double>(params_.max_yawrate))
+            : std::max(cmd_vel.angular.z,
+                       -static_cast<double>(params_.max_yawrate));
   }
 
   if (flags_.emergency_stop || mode_.first == "stop")
