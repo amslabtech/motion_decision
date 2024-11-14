@@ -27,6 +27,7 @@
 struct MotionDecisionParams
 {
   bool use_rear_laser;
+  bool use_360_laser;
   int hz;
   int allowable_num_of_not_received;
   float max_velocity;
@@ -168,6 +169,14 @@ private:
    * @param [out] index_of_min_range Index of the closest sensor data
    */
   void search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range);
+
+  /**
+   * @brief Create laser from 360 laser function
+   * @param [in] msg Msg of 360 laser
+   * @param [in] direction Direction of laser
+   * @return sensor_msgs::LaserScan Laser data
+   */
+  sensor_msgs::LaserScan create_laser_from_360_laser(const sensor_msgs::LaserScan &msg, const std::string &direction);
 
   /**
    * @brief Select mode function

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "motion_decision/motion_decision.h"
 
@@ -28,12 +29,15 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
 
   load_params();
+  if (params_.use_360_laser)
+    params_.use_rear_laser = true;
 }
 
 void MotionDecision::load_params(void)
 {
   // MotionDecisionParams
   private_nh_.param<bool>("use_rear_laser", params_.use_rear_laser, true);
+  private_nh_.param<bool>("use_360_laser", params_.use_360_laser, false);
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
@@ -61,10 +65,20 @@ void MotionDecision::load_params(void)
 
 void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
-  front_laser_ = *msg;
+  if (!params_.use_360_laser)
+    front_laser_ = *msg;
+  else
+    front_laser_ = create_laser_from_360_laser(*msg, "front");
   search_min_range(front_laser_.value(), laser_info_.front_min_range, laser_info_.front_index_of_min_range);
   flags_.front_laser_updated = true;
   counters_.not_received_front_laser = 0;
+
+  if (!params_.use_360_laser)
+    return;
+  rear_laser_ = create_laser_from_360_laser(*msg, "rear");
+  search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
+  flags_.rear_laser_updated = true;
+  counters_.not_received_rear_laser = 0;
 }
 
 void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
@@ -116,6 +130,9 @@ void MotionDecision::local_path_cmd_vel_callback(const geometry_msgs::TwistConst
 
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
+  if (params_.use_360_laser)
+    return;
+
   rear_laser_ = *msg;
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
   flags_.rear_laser_updated = true;
@@ -163,6 +180,33 @@ void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, float
       index_of_min_range = i;
     }
   }
+}
+
+sensor_msgs::LaserScan
+MotionDecision::create_laser_from_360_laser(const sensor_msgs::LaserScan &msg, const std::string &direction)
+{
+  sensor_msgs::LaserScan laser = msg;
+  laser.ranges = std::vector<float>();
+  laser.angle_min = -M_PI / 2.0;
+  laser.angle_max = M_PI / 2.0;
+
+  if (direction == "front")
+  {
+    const auto start_it = msg.ranges.begin() + msg.ranges.size() / 4;
+    const auto end_it = msg.ranges.begin() + 3 * msg.ranges.size() / 4;
+    laser.ranges.insert(laser.ranges.end(), start_it, end_it);
+  }
+  else if (direction == "rear")
+  {
+    const auto start_it = msg.ranges.begin() + 3 * msg.ranges.size() / 4;
+    const auto end_it = msg.ranges.end();
+    const auto start_it2 = msg.ranges.begin();
+    const auto end_it2 = msg.ranges.begin() + msg.ranges.size() / 4;
+    laser.ranges.insert(laser.ranges.end(), start_it, end_it);
+    laser.ranges.insert(laser.ranges.end(), start_it2, end_it2);
+  }
+
+  return laser;
 }
 
 std::pair<std::string, std::string>
@@ -365,33 +409,20 @@ void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
 {
   if (flags_.turbo_trigger)
   {
-    cmd_vel.linear.x =
-        0.0 < cmd_vel.linear.x
-            ? std::min(cmd_vel.linear.x,
-                       static_cast<double>(params_.turbo_max_velocity))
-            : std::max(cmd_vel.linear.x,
-                       static_cast<double>(-params_.turbo_max_velocity));
-    cmd_vel.angular.z =
-        0.0 < cmd_vel.angular.z
-            ? std::min(cmd_vel.angular.z,
-                       static_cast<double>(params_.max_yawrate))
-            : std::max(cmd_vel.angular.z,
-                       -static_cast<double>(params_.max_yawrate));
+    cmd_vel.linear.x = 0.0 < cmd_vel.linear.x
+                           ? std::min(cmd_vel.linear.x, static_cast<double>(params_.turbo_max_velocity))
+                           : std::max(cmd_vel.linear.x, static_cast<double>(-params_.turbo_max_velocity));
+    cmd_vel.angular.z = 0.0 < cmd_vel.angular.z
+                            ? std::min(cmd_vel.angular.z, static_cast<double>(params_.max_yawrate))
+                            : std::max(cmd_vel.angular.z, -static_cast<double>(params_.max_yawrate));
   }
   else
   {
-    cmd_vel.linear.x =
-        0.0 < cmd_vel.linear.x
-            ? std::min(cmd_vel.linear.x,
-                       static_cast<double>(params_.max_velocity))
-            : std::max(cmd_vel.linear.x,
-                       static_cast<double>(-params_.max_velocity));
-    cmd_vel.angular.z =
-        0.0 < cmd_vel.angular.z
-            ? std::min(cmd_vel.angular.z,
-                       static_cast<double>(params_.max_yawrate))
-            : std::max(cmd_vel.angular.z,
-                       -static_cast<double>(params_.max_yawrate));
+    cmd_vel.linear.x = 0.0 < cmd_vel.linear.x ? std::min(cmd_vel.linear.x, static_cast<double>(params_.max_velocity))
+                                              : std::max(cmd_vel.linear.x, static_cast<double>(-params_.max_velocity));
+    cmd_vel.angular.z = 0.0 < cmd_vel.angular.z
+                            ? std::min(cmd_vel.angular.z, static_cast<double>(params_.max_yawrate))
+                            : std::max(cmd_vel.angular.z, -static_cast<double>(params_.max_yawrate));
   }
 
   if (flags_.emergency_stop || mode_.first == "stop")
