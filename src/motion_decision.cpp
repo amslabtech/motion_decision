@@ -29,9 +29,6 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
       nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
   task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
 
-  custom_laser_front_pub = nh_.advertise<sensor_msgs::LaserScan>("/custom_laser/front", 1, true);
-  custom_laser_rear_pub = nh_.advertise<sensor_msgs::LaserScan>("/custom_laser/rear", 1, true);
-
   load_params();
   if (params_.use_360_laser || params_.use_local_map)
     params_.use_rear_laser = true;
