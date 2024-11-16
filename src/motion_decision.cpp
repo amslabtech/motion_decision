@@ -152,13 +152,11 @@ void MotionDecision::local_map_callback(const nav_msgs::OccupancyGridConstPtr &m
 
   front_laser_ = create_laser_from_local_map(*msg, "front");
   search_min_range(front_laser_.value(), laser_info_.front_min_range, laser_info_.front_index_of_min_range);
-  custom_laser_front_pub.publish(front_laser_.value());
   flags_.front_laser_updated = true;
   counters_.not_received_front_laser = 0;
 
   rear_laser_ = create_laser_from_local_map(*msg, "rear");
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
-  custom_laser_rear_pub.publish(rear_laser_.value());
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
 }
