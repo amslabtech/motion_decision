@@ -43,6 +43,7 @@
         <!-- MotionDecisionParams -->
         <param name="use_rear_laser" value="$(arg use_rear_laser)"/>
         <param name="use_360_laser" value="$(arg use_360_laser)"/>
+        <param name="use_local_map" value="$(arg use_local_map)"/>
         <param name="hz" value="$(arg hz)"/>
         <param name="allowable_num_of_not_received" value="$(arg allowable_num_of_not_received)"/>
         <param name="max_velocity" value="$(arg max_velocity)"/>
