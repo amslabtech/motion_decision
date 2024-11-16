@@ -24,6 +24,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   local_map_sub_ = nh_.subscribe("/local_map", 1, &MotionDecision::local_map_callback, this);
   odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
   rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
+  battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &MotionDecision::battery_voltage_callback, this);
 
   recovery_mode_flag_server_ =
       nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
@@ -64,6 +65,10 @@ void MotionDecision::load_params(void)
   private_nh_.param<float>("recovery/yawrate_resolution", params_of_recovery_.yawrate_resolution, 0.1);
   private_nh_.param<float>("recovery/spin_turn_speed", params_of_recovery_.spin_turn_speed, 0.2);
   private_nh_.param<float>("recovery/time", params_of_recovery_.time, 3.0);
+
+  // BatteryInfo
+  private_nh_.param<float>("battery/full_charge_voltage", battery_info_.full_charge_voltage, 24.0);
+  private_nh_.param<float>("battery/cutoff_voltage", battery_info_.cutoff_voltage, 20.0);
 }
 
 void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
@@ -159,6 +164,14 @@ void MotionDecision::local_map_callback(const nav_msgs::OccupancyGridConstPtr &m
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
+}
+
+void MotionDecision::battery_voltage_callback(const std_msgs::Float32ConstPtr &msg)
+{
+  battery_info_.current_percentage = (msg->data - battery_info_.cutoff_voltage) /
+                                     (battery_info_.full_charge_voltage - battery_info_.cutoff_voltage) * 100.0;
+  battery_info_.current_percentage = std::min(100.0f, battery_info_.current_percentage);
+  battery_info_.used = true;
 }
 
 bool MotionDecision::recovery_mode_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -590,6 +603,18 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
     std::cout << "####################" << std::endl;
     std::cout << "### intersection ###" << std::endl;
     std::cout << "####################" << std::endl;
+  }
+  if (battery_info_.used)
+  {
+    if (battery_info_.current_percentage < 25.0)
+      std::cout << "battery         : " << RED << std::fixed << std::setprecision(1) << battery_info_.current_percentage
+                << " %" << RESET_COLOR << std::endl;
+    else if (battery_info_.current_percentage < 50.0)
+      std::cout << "battery         : " << YELLOW << std::fixed << std::setprecision(1)
+                << battery_info_.current_percentage << " %" << RESET_COLOR << std::endl;
+    else
+      std::cout << "battery         : " << std::fixed << std::setprecision(1) << battery_info_.current_percentage
+                << " %" << std::endl;
   }
   if (laser_info_.front_min_range == -1.0)
     std::cout << "min front laser : " << RED << laser_info_.front_min_range << RESET_COLOR << std::endl;

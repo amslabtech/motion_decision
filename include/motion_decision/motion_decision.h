@@ -12,6 +12,7 @@
 #define RED "\033[31m"
 #define GREEN "\033[32m"
 #define CYAN "\033[36m"
+#define YELLOW "\033[33m"
 
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
@@ -22,6 +23,7 @@
 #include <sensor_msgs/LaserScan.h>
 #include <std_msgs/Bool.h>
 #include <std_srvs/SetBool.h>
+#include <std_msgs/Float32.h>
 #include <string>
 #include <utility>
 
@@ -84,6 +86,14 @@ struct LaserInfo
   int rear_index_of_min_range = 0;
   float front_min_range = -1.0;
   float rear_min_range = -1.0;
+};
+
+struct BatteryInfo
+{
+  float full_charge_voltage = 0.0;
+  float cutoff_voltage = 0.0;
+  float current_percentage = 0.0;
+  bool used = false;
 };
 
 /**
@@ -153,6 +163,12 @@ private:
    * @param [in] msg Msg of local map
    */
   void local_map_callback(const nav_msgs::OccupancyGridConstPtr &msg);
+
+  /**
+   * @brief Battery voltage callback function
+   * @param [in] msg Msg of battery voltage
+   */
+  void battery_voltage_callback(const std_msgs::Float32ConstPtr &msg);
 
   /**
    * @brief Recovery mode flag callback function
@@ -263,6 +279,7 @@ private:
   Flags flags_;
   Counters counters_;
   LaserInfo laser_info_;
+  BatteryInfo battery_info_;
 
   // motiom mode {first: <stop, move>, second: <manual, auto>}
   std::pair<std::string, std::string> mode_ = std::make_pair("stop", "manual");
@@ -278,6 +295,7 @@ private:
   ros::Subscriber local_map_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber rear_laser_sub_;
+  ros::Subscriber battery_voltage_sub_;
   ros::ServiceServer recovery_mode_flag_server_;
   ros::ServiceServer task_stop_flag_server_;
 

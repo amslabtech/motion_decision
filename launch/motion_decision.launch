@@ -29,6 +29,9 @@
     <arg name="recovery/yawrate_resolution" default="0.1"/>
     <arg name="recovery/spin_turn_speed" default="0.2"/>
     <arg name="recovery/time" default="3.0"/>
+    <!-- BatteryParams -->
+    <arg name="battery/full_charge_voltage" default="24.0"/>
+    <arg name="battery/cutoff_voltage" default="20.0"/>
     <!-- Published topic -->
     <arg name="cmd_vel" default="/cmd_vel"/>
     <!-- Subscribed topics -->
@@ -37,6 +40,7 @@
     <arg name="odom" default="/odom"/>
     <arg name="front_laser/scan" default="/front_laser/scan"/>
     <arg name="rear_laser/scan" default="/rear_laser/scan"/>
+    <arg name="battery_voltage" default="/battery_voltage"/>
 
     <!-- run motion_decision node -->
     <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="$(arg ns)" output="$(arg output)" respawn="true">
@@ -66,6 +70,9 @@
         <param name="recovery/yawrate_resolution" value="$(arg recovery/yawrate_resolution)"/>
         <param name="recovery/spin_turn_speed" value="$(arg recovery/spin_turn_speed)"/>
         <param name="recovery/time" value="$(arg recovery/time)"/>
+        <!-- BatteryParams -->
+        <param name="battery/full_charge_voltage" value="$(arg battery/full_charge_voltage)"/>
+        <param name="battery/cutoff_voltage" value="$(arg battery/cutoff_voltage)"/>
         <!-- Published topic -->
         <remap from="/cmd_vel" to="$(arg cmd_vel)"/>
         <!-- Subscribed topics -->
@@ -74,5 +81,6 @@
         <remap from="/odom" to="$(arg odom)"/>
         <remap from="/front_laser/scan" to="$(arg front_laser/scan)"/>
         <remap from="/rear_laser/scan" to="$(arg rear_laser/scan)"/>
+        <remap from="/battery_voltage" to="$(arg battery_voltage)"/>
     </node>
 </launch>
