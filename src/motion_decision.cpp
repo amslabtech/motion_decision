@@ -375,7 +375,7 @@ void MotionDecision::process(void)
       counters_.recovery = 0;
     }
 
-    // publish_cmd_vel(cmd_vel_);
+    publish_cmd_vel(cmd_vel_);
 
     flags_.front_laser_updated = false;
     flags_.rear_laser_updated = false;
