@@ -606,16 +606,17 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
   }
   if (battery_info_.used)
   {
+    std::ios::fmtflags f(std::cout.flags());
     if (battery_info_.current_percentage < 25.0)
       std::cout << "battery         : " << RED << std::fixed << std::setprecision(1) << battery_info_.current_percentage
-                << " %" << RESET_COLOR << std::resetiosflags(std::ios_base::floatfield) << std::endl;
+                << " %" << RESET_COLOR << std::endl;
     else if (battery_info_.current_percentage < 50.0)
       std::cout << "battery         : " << YELLOW << std::fixed << std::setprecision(1)
-                << battery_info_.current_percentage << " %" << RESET_COLOR
-                << std::resetiosflags(std::ios_base::floatfield) << std::endl;
+                << battery_info_.current_percentage << " %" << RESET_COLOR << std::endl;
     else
       std::cout << "battery         : " << std::fixed << std::setprecision(1) << battery_info_.current_percentage
-                << " %" << std::resetiosflags(std::ios_base::floatfield) << std::endl;
+                << " %" << std::endl;
+    std::cout.flags(f);
   }
   if (laser_info_.front_min_range == -1.0)
     std::cout << "min front laser : " << RED << laser_info_.front_min_range << RESET_COLOR << std::endl;
