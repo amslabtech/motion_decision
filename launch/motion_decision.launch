@@ -6,6 +6,7 @@
     <!-- MotionDecisionParams -->
     <arg name="use_rear_laser" default="true"/>
     <arg name="use_360_laser" default="false"/>
+    <arg name="use_local_map" default="false"/>
     <arg name="hz" default="20"/>
     <arg name="allowable_num_of_not_received" default="3"/>
     <arg name="max_velocity" default="1.0"/>
@@ -32,6 +33,7 @@
     <arg name="cmd_vel" default="/cmd_vel"/>
     <!-- Subscribed topics -->
     <arg name="local_path/cmd_vel" default="/local_path/cmd_vel"/>
+    <arg name="local_map" default="/local_map"/>
     <arg name="odom" default="/odom"/>
     <arg name="front_laser/scan" default="/front_laser/scan"/>
     <arg name="rear_laser/scan" default="/rear_laser/scan"/>
@@ -67,6 +69,7 @@
         <remap from="/cmd_vel" to="$(arg cmd_vel)"/>
         <!-- Subscribed topics -->
         <remap from="/local_path/cmd_vel" to="$(arg local_path/cmd_vel)"/>
+        <remap from="/local_map" to="$(arg local_map)"/>
         <remap from="/odom" to="$(arg odom)"/>
         <remap from="/front_laser/scan" to="$(arg front_laser/scan)"/>
         <remap from="/rear_laser/scan" to="$(arg rear_laser/scan)"/>

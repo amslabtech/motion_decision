@@ -21,6 +21,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   front_laser_sub_ = nh_.subscribe("/front_laser/scan", 1, &MotionDecision::front_laser_callback, this);
   joy_sub_ = nh_.subscribe("/joy", 1, &MotionDecision::joy_callback, this);
   local_path_cmd_vel_sub_ = nh_.subscribe("/local_path/cmd_vel", 1, &MotionDecision::local_path_cmd_vel_callback, this);
+  local_map_sub_ = nh_.subscribe("/local_map", 1, &MotionDecision::local_map_callback, this);
   odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
   rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
 
@@ -29,7 +30,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
 
   load_params();
-  if (params_.use_360_laser)
+  if (params_.use_360_laser || params_.use_local_map)
     params_.use_rear_laser = true;
 }
 
@@ -38,6 +39,7 @@ void MotionDecision::load_params(void)
   // MotionDecisionParams
   private_nh_.param<bool>("use_rear_laser", params_.use_rear_laser, true);
   private_nh_.param<bool>("use_360_laser", params_.use_360_laser, false);
+  private_nh_.param<bool>("use_local_map", params_.use_local_map, false);
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
@@ -48,6 +50,7 @@ void MotionDecision::load_params(void)
   private_nh_.param<float>("collision_distance", params_.collision_distance, 0.4);
   private_nh_.param<float>("safety_collision_time", params_.safety_collision_time, 0.5);
   private_nh_.param<float>("stuck_time_threshold", params_.stuck_time_threshold, 1.0);
+  private_nh_.param<float>("angle_increment", params_.angle_increment, 0.1);
   private_nh_.param<std::string>("stop_sound_path", params_.stop_sound_path, std::string(""));
   private_nh_.param<std::string>("recovery_sound_path", params_.recovery_sound_path, std::string(""));
   private_nh_.param<std::string>("task_stop_sound_path", params_.task_stop_sound_path, std::string(""));
@@ -65,6 +68,9 @@ void MotionDecision::load_params(void)
 
 void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
+  if (params_.use_local_map)
+    return;
+
   if (!params_.use_360_laser)
     front_laser_ = *msg;
   else
@@ -130,10 +136,26 @@ void MotionDecision::local_path_cmd_vel_callback(const geometry_msgs::TwistConst
 
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
 {
-  if (params_.use_360_laser)
+  if (!params_.use_rear_laser || params_.use_360_laser || params_.use_local_map)
     return;
 
   rear_laser_ = *msg;
+  search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
+  flags_.rear_laser_updated = true;
+  counters_.not_received_rear_laser = 0;
+}
+
+void MotionDecision::local_map_callback(const nav_msgs::OccupancyGridConstPtr &msg)
+{
+  if (!params_.use_local_map)
+    return;
+
+  front_laser_ = create_laser_from_local_map(*msg, "front");
+  search_min_range(front_laser_.value(), laser_info_.front_min_range, laser_info_.front_index_of_min_range);
+  flags_.front_laser_updated = true;
+  counters_.not_received_front_laser = 0;
+
+  rear_laser_ = create_laser_from_local_map(*msg, "rear");
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
@@ -204,6 +226,82 @@ MotionDecision::create_laser_from_360_laser(const sensor_msgs::LaserScan &msg, c
     const auto end_it2 = msg.ranges.begin() + msg.ranges.size() / 4;
     laser.ranges.insert(laser.ranges.end(), start_it, end_it);
     laser.ranges.insert(laser.ranges.end(), start_it2, end_it2);
+  }
+
+  return laser;
+}
+
+sensor_msgs::LaserScan
+MotionDecision::create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, const std::string &direction)
+{
+  sensor_msgs::LaserScan laser;
+  laser.header = msg.header;
+  laser.angle_min = -M_PI / 2.0;
+  laser.angle_max = M_PI / 2.0;
+  laser.angle_increment = params_.angle_increment;
+  laser.time_increment = 0.0;
+  laser.scan_time = 0.0;
+  laser.range_min = 0.0;
+  laser.range_max = 10.0;
+
+  const float max_search_dist = hypot(msg.info.origin.position.x, msg.info.origin.position.y);
+  if (direction == "front")
+  {
+    for (float angle = laser.angle_min; angle <= laser.angle_max; angle += laser.angle_increment)
+    {
+      for (float dist = 0.0; dist <= max_search_dist; dist += msg.info.resolution)
+      {
+        const float pos_x = dist * cos(angle);
+        const float pos_y = dist * sin(angle);
+        const int index_x = floor((pos_x - msg.info.origin.position.x) / msg.info.resolution);
+        const int index_y = floor((pos_y - msg.info.origin.position.y) / msg.info.resolution);
+
+        if ((0 <= index_x && index_x < msg.info.width) && (0 <= index_y && index_y < msg.info.height))
+        {
+          if (msg.data[index_x + index_y * msg.info.width] == 100)
+          {
+            laser.ranges.push_back(dist);
+            break;
+          }
+        }
+      }
+
+      if (laser.ranges.size() != static_cast<size_t>((angle - laser.angle_min) / laser.angle_increment) + 1)
+        laser.ranges.push_back(laser.range_max);
+    }
+  }
+  else
+  {
+    std::vector<std::pair<float, float>> angle_range =
+    {
+        std::make_pair(M_PI / 2.0, M_PI), std::make_pair(-M_PI, -M_PI / 2.0)
+    };
+
+    for (const auto &angle_range : angle_range)
+    {
+      for (float angle = angle_range.first; angle <= angle_range.second; angle += laser.angle_increment)
+      {
+        for (float dist = 0.0; dist <= max_search_dist; dist += msg.info.resolution)
+        {
+          const float pos_x = dist * cos(angle);
+          const float pos_y = dist * sin(angle);
+          const int index_x = floor((pos_x - msg.info.origin.position.x) / msg.info.resolution);
+          const int index_y = floor((pos_y - msg.info.origin.position.y) / msg.info.resolution);
+
+          if ((0 <= index_x && index_x < msg.info.width) && (0 <= index_y && index_y < msg.info.height))
+          {
+            if (msg.data[index_x + index_y * msg.info.width] == 100)
+            {
+              laser.ranges.push_back(dist);
+              break;
+            }
+          }
+        }
+
+        if (laser.ranges.size() != static_cast<size_t>((angle - angle_range.first) / laser.angle_increment) + 1)
+          laser.ranges.push_back(laser.range_max);
+      }
+    }
   }
 
   return laser;

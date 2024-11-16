@@ -15,6 +15,7 @@
 
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <optional>
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
@@ -28,6 +29,7 @@ struct MotionDecisionParams
 {
   bool use_rear_laser;
   bool use_360_laser;
+  bool use_local_map;
   int hz;
   int allowable_num_of_not_received;
   float max_velocity;
@@ -38,6 +40,7 @@ struct MotionDecisionParams
   float collision_distance;
   float safety_collision_time;
   float stuck_time_threshold;
+  float angle_increment;
   std::string stop_sound_path;
   std::string recovery_sound_path;
   std::string task_stop_sound_path;
@@ -146,6 +149,12 @@ private:
   void rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg);
 
   /**
+   * @brief Local map callback function
+   * @param [in] msg Msg of local map
+   */
+  void local_map_callback(const nav_msgs::OccupancyGridConstPtr &msg);
+
+  /**
    * @brief Recovery mode flag callback function
    * @details This is not flag to run recovery mode. This is flag to use recovery mode.
    * @param [in] req Request of recovery mode flag
@@ -177,6 +186,14 @@ private:
    * @return sensor_msgs::LaserScan Laser data
    */
   sensor_msgs::LaserScan create_laser_from_360_laser(const sensor_msgs::LaserScan &msg, const std::string &direction);
+
+  /**
+   * @brief Create laser from local map function
+   * @param [in] msg Msg of local map
+   * @param [in] direction Direction of laser
+   * @return sensor_msgs::LaserScan Laser data
+   */
+  sensor_msgs::LaserScan create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, const std::string &direction);
 
   /**
    * @brief Select mode function
@@ -258,6 +275,7 @@ private:
   ros::Subscriber front_laser_sub_;
   ros::Subscriber joy_sub_;
   ros::Subscriber local_path_cmd_vel_sub_;
+  ros::Subscriber local_map_sub_;
   ros::Subscriber odom_sub_;
   ros::Subscriber rear_laser_sub_;
   ros::ServiceServer recovery_mode_flag_server_;
