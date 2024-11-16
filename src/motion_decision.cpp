@@ -29,6 +29,9 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
       nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
   task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
 
+  custom_laser_front_pub = nh_.advertise<sensor_msgs::LaserScan>("/custom_laser/front", 1, true);
+  custom_laser_rear_pub = nh_.advertise<sensor_msgs::LaserScan>("/custom_laser/rear", 1, true);
+
   load_params();
   if (params_.use_360_laser || params_.use_local_map)
     params_.use_rear_laser = true;
@@ -152,11 +155,13 @@ void MotionDecision::local_map_callback(const nav_msgs::OccupancyGridConstPtr &m
 
   front_laser_ = create_laser_from_local_map(*msg, "front");
   search_min_range(front_laser_.value(), laser_info_.front_min_range, laser_info_.front_index_of_min_range);
+  custom_laser_front_pub.publish(front_laser_.value());
   flags_.front_laser_updated = true;
   counters_.not_received_front_laser = 0;
 
   rear_laser_ = create_laser_from_local_map(*msg, "rear");
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
+  custom_laser_rear_pub.publish(rear_laser_.value());
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
 }
@@ -272,35 +277,28 @@ MotionDecision::create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, 
   }
   else
   {
-    std::vector<std::pair<float, float>> angle_range =
+    const std::pair<float, float> angle_range = std::make_pair(M_PI / 2.0, 3 * M_PI / 2.0);
+    for (float angle = angle_range.first; angle <= angle_range.second; angle += laser.angle_increment)
     {
-        std::make_pair(M_PI / 2.0, M_PI), std::make_pair(-M_PI, -M_PI / 2.0)
-    };
-
-    for (const auto &angle_range : angle_range)
-    {
-      for (float angle = angle_range.first; angle <= angle_range.second; angle += laser.angle_increment)
+      for (float dist = 0.0; dist <= max_search_dist; dist += msg.info.resolution)
       {
-        for (float dist = 0.0; dist <= max_search_dist; dist += msg.info.resolution)
-        {
-          const float pos_x = dist * cos(angle);
-          const float pos_y = dist * sin(angle);
-          const int index_x = floor((pos_x - msg.info.origin.position.x) / msg.info.resolution);
-          const int index_y = floor((pos_y - msg.info.origin.position.y) / msg.info.resolution);
+        const float pos_x = dist * cos(angle);
+        const float pos_y = dist * sin(angle);
+        const int index_x = floor((pos_x - msg.info.origin.position.x) / msg.info.resolution);
+        const int index_y = floor((pos_y - msg.info.origin.position.y) / msg.info.resolution);
 
-          if ((0 <= index_x && index_x < msg.info.width) && (0 <= index_y && index_y < msg.info.height))
+        if ((0 <= index_x && index_x < msg.info.width) && (0 <= index_y && index_y < msg.info.height))
+        {
+          if (msg.data[index_x + index_y * msg.info.width] == 100)
           {
-            if (msg.data[index_x + index_y * msg.info.width] == 100)
-            {
-              laser.ranges.push_back(dist);
-              break;
-            }
+            laser.ranges.push_back(dist);
+            break;
           }
         }
-
-        if (laser.ranges.size() != static_cast<size_t>((angle - angle_range.first) / laser.angle_increment) + 1)
-          laser.ranges.push_back(laser.range_max);
       }
+
+      if (laser.ranges.size() != static_cast<size_t>((angle - angle_range.first) / laser.angle_increment) + 1)
+        laser.ranges.push_back(laser.range_max);
     }
   }
 
@@ -380,7 +378,7 @@ void MotionDecision::process(void)
       counters_.recovery = 0;
     }
 
-    publish_cmd_vel(cmd_vel_);
+    // publish_cmd_vel(cmd_vel_);
 
     flags_.front_laser_updated = false;
     flags_.rear_laser_updated = false;

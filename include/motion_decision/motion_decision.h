@@ -285,6 +285,10 @@ private:
   geometry_msgs::Twist odom_vel_;
   std::optional<sensor_msgs::LaserScan> front_laser_;
   std::optional<sensor_msgs::LaserScan> rear_laser_;
+
+  ros::Publisher custom_laser_front_pub;
+  ros::Publisher custom_laser_rear_pub;
+
 };
 
 #endif  // MOTION_DECISION_MOTION_DECISION_H
