@@ -29,6 +29,9 @@
     <arg name="recovery/yawrate_resolution" default="0.1"/>
     <arg name="recovery/spin_turn_speed" default="0.2"/>
     <arg name="recovery/time" default="3.0"/>
+    <!-- BatteryParams -->
+    <arg name="battery/full_charge_voltage" default="24.0"/>
+    <arg name="battery/cutoff_voltage" default="20.0"/>
     <!-- Published topic -->
     <arg name="cmd_vel" default="/cmd_vel"/>
     <!-- Subscribed topics -->
@@ -66,6 +69,9 @@
         <param name="recovery/yawrate_resolution" value="$(arg recovery/yawrate_resolution)"/>
         <param name="recovery/spin_turn_speed" value="$(arg recovery/spin_turn_speed)"/>
         <param name="recovery/time" value="$(arg recovery/time)"/>
+        <!-- BatteryParams -->
+        <param name="battery/full_charge_voltage" value="$(arg battery/full_charge_voltage)"/>
+        <param name="battery/cutoff_voltage" value="$(arg battery/cutoff_voltage)"/>
         <!-- Published topic -->
         <remap from="/cmd_vel" to="$(arg cmd_vel)"/>
         <!-- Subscribed topics -->
