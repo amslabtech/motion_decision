@@ -231,7 +231,7 @@ MotionDecision::create_laser_from_360_laser(const sensor_msgs::LaserScan &msg, c
     const auto end_it = msg.ranges.begin() + 3 * msg.ranges.size() / 4;
     laser.ranges.insert(laser.ranges.end(), start_it, end_it);
   }
-  else if (direction == "rear")
+  else
   {
     const auto start_it = msg.ranges.begin() + 3 * msg.ranges.size() / 4;
     const auto end_it = msg.ranges.end();
