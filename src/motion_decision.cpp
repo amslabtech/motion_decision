@@ -170,6 +170,7 @@ void MotionDecision::battery_voltage_callback(const std_msgs::Float32ConstPtr &m
 {
   battery_info_.current_percentage = (msg->data - battery_info_.cutoff_voltage) /
                                      (battery_info_.full_charge_voltage - battery_info_.cutoff_voltage) * 100.0;
+  battery_info_.current_percentage = std::min(100.0, battery_info_.current_percentage);
   battery_info_.used = true;
 }
 
