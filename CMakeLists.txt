@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   std_srvs
 )
+find_package(Eigen3 REQUIRED COMPONENTS system)
 
 ###################################
 ## catkin specific configuration ##
@@ -23,6 +24,7 @@ catkin_package()
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 add_executable(${PROJECT_NAME} src/${PROJECT_NAME}.cpp)
