@@ -332,6 +332,11 @@ MotionDecision::create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, 
 
 sensor_msgs::LaserScan MotionDecision::adjust_dist_for_footprint(const sensor_msgs::LaserScan &msg, const std::string &direction)
 {
+  if (direction == "front" && !footprint_.has_value())
+    return msg;
+  else if (direction == "rear" && !footprint_inversed_.has_value())
+    return msg;
+
   sensor_msgs::LaserScan laser = msg;
   for (int i = 0; i < laser.ranges.size(); i++)
   {
