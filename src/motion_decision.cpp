@@ -221,7 +221,6 @@ bool MotionDecision::task_stop_flag_callback(std_srvs::SetBool::Request &req, st
   return true;
 }
 
-
 void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range)
 {
   min_range = laser.range_max;
