@@ -192,7 +192,7 @@ void MotionDecision::footprint_callback(const geometry_msgs::PolygonStampedPtr &
 
   // create inversed footprint
   int start_index;
-  float max_angle = - M_PI;
+  float max_angle = -M_PI;
   for (int i = 0; i < footprint_->polygon.points.size(); i++)
   {
     const float angle = atan2(footprint_->polygon.points[i].y, footprint_->polygon.points[i].x);
@@ -347,7 +347,8 @@ MotionDecision::create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, 
   return laser;
 }
 
-sensor_msgs::LaserScan MotionDecision::adjust_dist_for_footprint(const sensor_msgs::LaserScan &msg, const std::string &direction)
+sensor_msgs::LaserScan
+MotionDecision::adjust_dist_for_footprint(const sensor_msgs::LaserScan &msg, const std::string &direction)
 {
   if (direction == "front" && !footprint_.has_value())
     return msg;
@@ -374,8 +375,8 @@ sensor_msgs::LaserScan MotionDecision::adjust_dist_for_footprint(const sensor_ms
   }
 }
 
-geometry_msgs::Point MotionDecision::calc_intersection(
-    const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint)
+geometry_msgs::Point
+MotionDecision::calc_intersection(const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint)
 {
   for (int i = 0; i < footprint.polygon.points.size(); i++)
   {
