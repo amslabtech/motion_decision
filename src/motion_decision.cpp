@@ -189,24 +189,7 @@ void MotionDecision::battery_voltage_callback(const std_msgs::Float32ConstPtr &m
 void MotionDecision::footprint_callback(const geometry_msgs::PolygonStampedPtr &msg)
 {
   footprint_ = *msg;
-
-  // create inversed footprint
-  footprint_inversed_ = geometry_msgs::PolygonStamped();
-  int start_index;
-  float max_angle = -M_PI;
-  for (int i = 0; i < footprint_->polygon.points.size(); i++)
-  {
-    const float angle = atan2(footprint_->polygon.points[i].y, footprint_->polygon.points[i].x);
-    if (angle > max_angle)
-    {
-      max_angle = angle;
-      start_index = i;
-    }
-  }
-  for (int i = start_index; i < footprint_->polygon.points.size(); i++)
-    footprint_inversed_->polygon.points.push_back(footprint_->polygon.points[i]);
-  for (int i = 0; i < start_index; i++)
-    footprint_inversed_->polygon.points.push_back(footprint_->polygon.points[i]);
+  footprint_inversed_ = invert_footprint(footprint_.value());
 }
 
 bool MotionDecision::recovery_mode_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -238,6 +221,7 @@ bool MotionDecision::task_stop_flag_callback(std_srvs::SetBool::Request &req, st
   return true;
 }
 
+
 void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range)
 {
   min_range = laser.range_max;
@@ -250,6 +234,36 @@ void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, float
       index_of_min_range = i;
     }
   }
+}
+
+geometry_msgs::PolygonStamped MotionDecision::invert_footprint(const geometry_msgs::PolygonStamped &footprint)
+{
+  geometry_msgs::PolygonStamped footprint_inversed;
+
+  int start_index;
+  float max_angle = -M_PI;
+  for (int i = 0; i < footprint.polygon.points.size(); i++)
+  {
+    const float angle = atan2(footprint.polygon.points[i].y, footprint.polygon.points[i].x);
+    if (angle > max_angle)
+    {
+      max_angle = angle;
+      start_index = i;
+    }
+  }
+  for (int i = start_index; i < footprint.polygon.points.size(); i++)
+    footprint_inversed.polygon.points.push_back(footprint.polygon.points[i]);
+  for (int i = 0; i < start_index; i++)
+    footprint_inversed.polygon.points.push_back(footprint.polygon.points[i]);
+
+  // change positive and negative
+  for (int i = 0; i < footprint_inversed.polygon.points.size(); i++)
+  {
+    footprint_inversed.polygon.points[i].x *= -1.0;
+    footprint_inversed.polygon.points[i].y *= -1.0;
+  }
+
+  return footprint_inversed;
 }
 
 sensor_msgs::LaserScan

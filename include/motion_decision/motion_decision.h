@@ -207,6 +207,13 @@ private:
   void search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range);
 
   /**
+   * @brief Invert footprint function
+   * @param [in] footprint Footprint
+   * @return geometry_msgs::PolygonStamped Inversed footprint
+   */
+  geometry_msgs::PolygonStamped invert_footprint(const geometry_msgs::PolygonStamped &footprint);
+
+  /**
    * @brief Create laser from 360 laser function
    * @param [in] msg Msg of 360 laser
    * @param [in] direction Direction of laser
