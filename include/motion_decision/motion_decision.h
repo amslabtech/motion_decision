@@ -37,6 +37,7 @@ struct MotionDecisionParams
   bool use_360_laser;
   bool use_local_map;
   bool use_footprint;
+  bool enable_turbo_mode;
   int hz;
   int allowable_num_of_not_received;
   float max_velocity;
