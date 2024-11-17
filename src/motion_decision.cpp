@@ -374,6 +374,8 @@ MotionDecision::adjust_dist_for_footprint(const sensor_msgs::LaserScan &msg, con
       intersection = calc_intersection(obstacle, footprint_inversed_.value());
     laser.ranges[i] = range - hypot(intersection.x, intersection.y);
   }
+
+  return laser;
 }
 
 geometry_msgs::Point
