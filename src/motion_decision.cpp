@@ -34,6 +34,8 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   load_params();
   if (params_.use_360_laser || params_.use_local_map)
     params_.use_rear_laser = true;
+  if (!params_.enable_turbo_mode)
+    params_.turbo_max_velocity = params_.max_velocity;
 }
 
 void MotionDecision::load_params(void)
@@ -43,6 +45,7 @@ void MotionDecision::load_params(void)
   private_nh_.param<bool>("use_360_laser", params_.use_360_laser, false);
   private_nh_.param<bool>("use_local_map", params_.use_local_map, false);
   private_nh_.param<bool>("use_footprint", params_.use_footprint, false);
+  private_nh_.param<bool>("enable_turbo_mode", params_.enable_turbo_mode, false);
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
@@ -105,7 +108,7 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
   if (mode_.first == "move" && mode_.second == "manual")
   {
     flags_.move_trigger = msg->buttons[4];
-    flags_.turbo_trigger = (flags_.move_trigger && msg->axes[2] == -1.0);
+    flags_.turbo_trigger = params_.enable_turbo_mode && flags_.move_trigger && msg->axes[2] == -1.0;
     if (flags_.turbo_trigger)
     {
       cmd_vel_.linear.x = flags_.move_trigger ? msg->axes[1] * params_.turbo_max_velocity : 0.0;
