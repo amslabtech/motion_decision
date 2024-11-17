@@ -191,6 +191,7 @@ void MotionDecision::footprint_callback(const geometry_msgs::PolygonStampedPtr &
   footprint_ = *msg;
 
   // create inversed footprint
+  footprint_inversed_ = geometry_msgs::PolygonStamped();
   int start_index;
   float max_angle = -M_PI;
   for (int i = 0; i < footprint_->polygon.points.size(); i++)
