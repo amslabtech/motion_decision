@@ -25,6 +25,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
   odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
   rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
   battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &MotionDecision::battery_voltage_callback, this);
+  footprint_sub_ = nh_.subscribe("/footprint", 1, &MotionDecision::footprint_callback, this);
 
   recovery_mode_flag_server_ =
       nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
@@ -41,6 +42,7 @@ void MotionDecision::load_params(void)
   private_nh_.param<bool>("use_rear_laser", params_.use_rear_laser, true);
   private_nh_.param<bool>("use_360_laser", params_.use_360_laser, false);
   private_nh_.param<bool>("use_local_map", params_.use_local_map, false);
+  private_nh_.param<bool>("use_footprint", params_.use_footprint, false);
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
@@ -80,6 +82,8 @@ void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &
     front_laser_ = *msg;
   else
     front_laser_ = create_laser_from_360_laser(*msg, "front");
+  if (params_.use_footprint)
+    front_laser_ = adjust_dist_for_footprint(front_laser_.value(), "front");
   search_min_range(front_laser_.value(), laser_info_.front_min_range, laser_info_.front_index_of_min_range);
   flags_.front_laser_updated = true;
   counters_.not_received_front_laser = 0;
@@ -87,6 +91,8 @@ void MotionDecision::front_laser_callback(const sensor_msgs::LaserScanConstPtr &
   if (!params_.use_360_laser)
     return;
   rear_laser_ = create_laser_from_360_laser(*msg, "rear");
+  if (params_.use_footprint)
+    rear_laser_ = adjust_dist_for_footprint(rear_laser_.value(), "rear");
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
@@ -145,6 +151,8 @@ void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &m
     return;
 
   rear_laser_ = *msg;
+  if (params_.use_footprint)
+    rear_laser_ = adjust_dist_for_footprint(rear_laser_.value(), "rear");
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
@@ -156,11 +164,15 @@ void MotionDecision::local_map_callback(const nav_msgs::OccupancyGridConstPtr &m
     return;
 
   front_laser_ = create_laser_from_local_map(*msg, "front");
+  if (params_.use_footprint)
+    front_laser_ = adjust_dist_for_footprint(front_laser_.value(), "front");
   search_min_range(front_laser_.value(), laser_info_.front_min_range, laser_info_.front_index_of_min_range);
   flags_.front_laser_updated = true;
   counters_.not_received_front_laser = 0;
 
   rear_laser_ = create_laser_from_local_map(*msg, "rear");
+  if (params_.use_footprint)
+    rear_laser_ = adjust_dist_for_footprint(rear_laser_.value(), "rear");
   search_min_range(rear_laser_.value(), laser_info_.rear_min_range, laser_info_.rear_index_of_min_range);
   flags_.rear_laser_updated = true;
   counters_.not_received_rear_laser = 0;
@@ -172,6 +184,12 @@ void MotionDecision::battery_voltage_callback(const std_msgs::Float32ConstPtr &m
                                      (battery_info_.full_charge_voltage - battery_info_.cutoff_voltage) * 100.0;
   battery_info_.current_percentage = std::min(100.0f, battery_info_.current_percentage);
   battery_info_.used = true;
+}
+
+void MotionDecision::footprint_callback(const geometry_msgs::PolygonStampedPtr &msg)
+{
+  footprint_ = *msg;
+  footprint_inversed_ = invert_footprint(footprint_.value());
 }
 
 bool MotionDecision::recovery_mode_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
@@ -215,6 +233,36 @@ void MotionDecision::search_min_range(const sensor_msgs::LaserScan &laser, float
       index_of_min_range = i;
     }
   }
+}
+
+geometry_msgs::PolygonStamped MotionDecision::invert_footprint(const geometry_msgs::PolygonStamped &footprint)
+{
+  geometry_msgs::PolygonStamped footprint_inversed;
+
+  int start_index;
+  float max_angle = -M_PI;
+  for (int i = 0; i < footprint.polygon.points.size(); i++)
+  {
+    const float angle = atan2(footprint.polygon.points[i].y, footprint.polygon.points[i].x);
+    if (angle > max_angle)
+    {
+      max_angle = angle;
+      start_index = i;
+    }
+  }
+  for (int i = start_index; i < footprint.polygon.points.size(); i++)
+    footprint_inversed.polygon.points.push_back(footprint.polygon.points[i]);
+  for (int i = 0; i < start_index; i++)
+    footprint_inversed.polygon.points.push_back(footprint.polygon.points[i]);
+
+  // change positive and negative
+  for (int i = 0; i < footprint_inversed.polygon.points.size(); i++)
+  {
+    footprint_inversed.polygon.points[i].x *= -1.0;
+    footprint_inversed.polygon.points[i].y *= -1.0;
+  }
+
+  return footprint_inversed;
 }
 
 sensor_msgs::LaserScan
@@ -311,6 +359,69 @@ MotionDecision::create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, 
   }
 
   return laser;
+}
+
+sensor_msgs::LaserScan
+MotionDecision::adjust_dist_for_footprint(const sensor_msgs::LaserScan &msg, const std::string &direction)
+{
+  if (direction == "front" && !footprint_.has_value())
+    return msg;
+  else if (direction == "rear" && !footprint_inversed_.has_value())
+    return msg;
+
+  sensor_msgs::LaserScan laser = msg;
+  for (int i = 0; i < laser.ranges.size(); i++)
+  {
+    float range = laser.ranges[i];
+    if (range < 0.01)
+      continue;
+
+    const float angle = laser.angle_min + i * laser.angle_increment;
+    geometry_msgs::Point obstacle;
+    obstacle.x = range * cos(angle);
+    obstacle.y = range * sin(angle);
+    geometry_msgs::Point intersection;
+    if (direction == "front")
+      intersection = calc_intersection(obstacle, footprint_.value());
+    else
+      intersection = calc_intersection(obstacle, footprint_inversed_.value());
+    laser.ranges[i] = range - hypot(intersection.x, intersection.y);
+  }
+
+  return laser;
+}
+
+geometry_msgs::Point
+MotionDecision::calc_intersection(const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint)
+{
+  for (int i = 0; i < footprint.polygon.points.size(); i++)
+  {
+    const Eigen::Vector3d vector_A(obstacle.x, obstacle.y, 0.0);
+    const Eigen::Vector3d vector_B(0.0, 0.0, 0.0);
+    const Eigen::Vector3d vector_C(footprint.polygon.points[i].x, footprint.polygon.points[i].y, 0.0);
+    Eigen::Vector3d vector_D(0.0, 0.0, 0.0);
+    if (i != footprint.polygon.points.size() - 1)
+      vector_D << footprint.polygon.points[i + 1].x, footprint.polygon.points[i + 1].y, 0.0;
+    else
+      vector_D << footprint.polygon.points[0].x, footprint.polygon.points[0].y, 0.0;
+
+    const double deno = (vector_B - vector_A).cross(vector_D - vector_C).z();
+    const double s = (vector_C - vector_A).cross(vector_D - vector_C).z() / deno;
+    const double t = (vector_B - vector_A).cross(vector_A - vector_C).z() / deno;
+
+    geometry_msgs::Point point;
+    point.x = vector_A.x() + s * (vector_B - vector_A).x();
+    point.y = vector_A.y() + s * (vector_B - vector_A).y();
+
+    // cross
+    if (!(s < 0.0 || 1.0 < s || t < 0.0 || 1.0 < t))
+      return point;
+  }
+
+  geometry_msgs::Point point;
+  point.x = 1e6;
+  point.y = 1e6;
+  return point;
 }
 
 std::pair<std::string, std::string>

@@ -15,6 +15,8 @@
 #define YELLOW "\033[33m"
 
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/PolygonStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <optional>
@@ -27,11 +29,14 @@
 #include <string>
 #include <utility>
 
+#include <Eigen/Dense>
+
 struct MotionDecisionParams
 {
   bool use_rear_laser;
   bool use_360_laser;
   bool use_local_map;
+  bool use_footprint;
   int hz;
   int allowable_num_of_not_received;
   float max_velocity;
@@ -171,6 +176,12 @@ private:
   void battery_voltage_callback(const std_msgs::Float32ConstPtr &msg);
 
   /**
+   * @brief Footprint callback function
+   * @param [in] msg Msg of footprint
+   */
+  void footprint_callback(const geometry_msgs::PolygonStampedPtr &msg);
+
+  /**
    * @brief Recovery mode flag callback function
    * @details This is not flag to run recovery mode. This is flag to use recovery mode.
    * @param [in] req Request of recovery mode flag
@@ -196,6 +207,13 @@ private:
   void search_min_range(const sensor_msgs::LaserScan &laser, float &min_range, int &index_of_min_range);
 
   /**
+   * @brief Invert footprint function
+   * @param [in] footprint Footprint
+   * @return geometry_msgs::PolygonStamped Inversed footprint
+   */
+  geometry_msgs::PolygonStamped invert_footprint(const geometry_msgs::PolygonStamped &footprint);
+
+  /**
    * @brief Create laser from 360 laser function
    * @param [in] msg Msg of 360 laser
    * @param [in] direction Direction of laser
@@ -210,6 +228,11 @@ private:
    * @return sensor_msgs::LaserScan Laser data
    */
   sensor_msgs::LaserScan create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, const std::string &direction);
+
+  sensor_msgs::LaserScan adjust_dist_for_footprint(const sensor_msgs::LaserScan &msg, const std::string &direction);
+
+  geometry_msgs::Point calc_intersection(
+    const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint);
 
   /**
    * @brief Select mode function
@@ -280,6 +303,8 @@ private:
   Counters counters_;
   LaserInfo laser_info_;
   BatteryInfo battery_info_;
+  std::optional<geometry_msgs::PolygonStamped> footprint_;
+  std::optional<geometry_msgs::PolygonStamped> footprint_inversed_;
 
   // motiom mode {first: <stop, move>, second: <manual, auto>}
   std::pair<std::string, std::string> mode_ = std::make_pair("stop", "manual");
@@ -296,6 +321,7 @@ private:
   ros::Subscriber odom_sub_;
   ros::Subscriber rear_laser_sub_;
   ros::Subscriber battery_voltage_sub_;
+  ros::Subscriber footprint_sub_;
   ros::ServiceServer recovery_mode_flag_server_;
   ros::ServiceServer task_stop_flag_server_;
 

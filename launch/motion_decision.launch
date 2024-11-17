@@ -7,6 +7,7 @@
     <arg name="use_rear_laser" default="true"/>
     <arg name="use_360_laser" default="false"/>
     <arg name="use_local_map" default="false"/>
+    <arg name="use_footprint" default="false"/>
     <arg name="hz" default="20"/>
     <arg name="allowable_num_of_not_received" default="3"/>
     <arg name="max_velocity" default="1.0"/>
@@ -48,6 +49,7 @@
         <param name="use_rear_laser" value="$(arg use_rear_laser)"/>
         <param name="use_360_laser" value="$(arg use_360_laser)"/>
         <param name="use_local_map" value="$(arg use_local_map)"/>
+        <param name="use_footprint" value="$(arg use_footprint)"/>
         <param name="hz" value="$(arg hz)"/>
         <param name="allowable_num_of_not_received" value="$(arg allowable_num_of_not_received)"/>
         <param name="max_velocity" value="$(arg max_velocity)"/>
