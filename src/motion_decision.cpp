@@ -189,6 +189,23 @@ void MotionDecision::battery_voltage_callback(const std_msgs::Float32ConstPtr &m
 void MotionDecision::footprint_callback(const geometry_msgs::PolygonStampedPtr &msg)
 {
   footprint_ = *msg;
+
+  // create inversed footprint
+  int start_index;
+  float max_angle = - M_PI;
+  for (int i = 0; i < footprint_->polygon.points.size(); i++)
+  {
+    const float angle = atan2(footprint_->polygon.points[i].y, footprint_->polygon.points[i].x);
+    if (angle > max_angle)
+    {
+      max_angle = angle;
+      start_index = i;
+    }
+  }
+  for (int i = start_index; i < footprint_->polygon.points.size(); i++)
+    footprint_inversed_->polygon.points.push_back(footprint_->polygon.points[i]);
+  for (int i = 0; i < start_index; i++)
+    footprint_inversed_->polygon.points.push_back(footprint_->polygon.points[i]);
 }
 
 bool MotionDecision::recovery_mode_flag_callback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res)
