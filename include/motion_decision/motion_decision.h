@@ -230,8 +230,20 @@ private:
    */
   sensor_msgs::LaserScan create_laser_from_local_map(const nav_msgs::OccupancyGrid &msg, const std::string &direction);
 
+  /**
+   * @brief Adjust distance for footprint function
+   * @param [in] msg Msg of laser
+   * @param [in] direction Direction of laser
+   * @return sensor_msgs::LaserScan Adjusted laser data
+   */
   sensor_msgs::LaserScan adjust_dist_for_footprint(const sensor_msgs::LaserScan &msg, const std::string &direction);
 
+  /**
+   * @brief Calcualte intersection function
+   * @param [in] obstacle Obstacle
+   * @param [in] footprint Footprint
+   * @return geometry_msgs::Point Intersection point
+   */
   geometry_msgs::Point calc_intersection(
     const geometry_msgs::Point &obstacle, const geometry_msgs::PolygonStamped &footprint);
 
