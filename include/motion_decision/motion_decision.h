@@ -40,6 +40,7 @@ struct MotionDecisionParams
   bool enable_turbo_mode;
   int hz;
   int allowable_num_of_not_received;
+  int allowable_num_of_not_received_local_path;
   float max_velocity;
   float turbo_max_velocity;
   float max_yawrate;
@@ -84,6 +85,7 @@ struct Counters
   int recovery = 0;
   int not_received_front_laser = 0;
   int not_received_rear_laser = 0;
+  int not_received_local_path = 0;
 };
 
 struct LaserInfo
