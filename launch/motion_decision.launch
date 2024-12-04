@@ -11,6 +11,7 @@
     <arg name="enable_turbo_mode" default="false"/>
     <arg name="hz" default="20"/>
     <arg name="allowable_num_of_not_received" default="3"/>
+    <arg name="allowable_num_of_not_received_local_path" default="1"/>
     <arg name="max_velocity" default="1.0"/>
     <arg name="turbo_max_velocity" default="1.66"/>
     <arg name="max_yawrate" default="1.0"/>
@@ -54,6 +55,7 @@
         <param name="enable_turbo_mode" value="$(arg enable_turbo_mode)"/>
         <param name="hz" value="$(arg hz)"/>
         <param name="allowable_num_of_not_received" value="$(arg allowable_num_of_not_received)"/>
+        <param name="allowable_num_of_not_received_local_path" value="$(arg allowable_num_of_not_received_local_path)"/>
         <param name="max_velocity" value="$(arg max_velocity)"/>
         <param name="turbo_max_velocity" value="$(arg turbo_max_velocity)"/>
         <param name="max_yawrate" value="$(arg max_yawrate)"/>
