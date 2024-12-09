@@ -48,6 +48,8 @@ void MotionDecision::load_params(void)
   private_nh_.param<bool>("enable_turbo_mode", params_.enable_turbo_mode, false);
   private_nh_.param<int>("hz", params_.hz, 20);
   private_nh_.param<int>("allowable_num_of_not_received", params_.allowable_num_of_not_received, 3);
+  private_nh_.param<int>(
+      "allowable_num_of_not_received_local_path", params_.allowable_num_of_not_received_local_path, 1);
   private_nh_.param<float>("max_velocity", params_.max_velocity, 1.0);
   private_nh_.param<float>("turbo_max_velocity", params_.turbo_max_velocity, 1.66);
   private_nh_.param<float>("max_yawrate", params_.max_yawrate, 1.0);
@@ -120,7 +122,9 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
       cmd_vel_.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
     }
   }
-  else if (mode_.first == "move" && mode_.second == "auto" && !flags_.local_path_updated)
+  else if (
+      mode_.first == "move" && mode_.second == "auto" &&
+      params_.allowable_num_of_not_received_local_path < counters_.not_received_local_path)
   {
     cmd_vel_ = geometry_msgs::Twist();
   }
@@ -146,6 +150,7 @@ void MotionDecision::local_path_cmd_vel_callback(const geometry_msgs::TwistConst
   if (mode_.first == "move" && mode_.second == "auto")
     cmd_vel_ = *msg;
   flags_.local_path_updated = true;
+  counters_.not_received_local_path = 0;
 }
 
 void MotionDecision::rear_laser_callback(const sensor_msgs::LaserScanConstPtr &msg)
@@ -473,7 +478,7 @@ void MotionDecision::process(void)
       {
         counters_.stuck = 0;
         counters_.recovery = 0;
-        if (!flags_.local_path_updated)
+        if (params_.allowable_num_of_not_received_local_path < counters_.not_received_local_path)
           cmd_vel_ = geometry_msgs::Twist();
       }
       else if (((cmd_vel_.linear.x < DBL_EPSILON && fabs(cmd_vel_.angular.z) < DBL_EPSILON) ||
@@ -513,6 +518,8 @@ void MotionDecision::process(void)
       counters_.not_received_front_laser++;
     if (!flags_.rear_laser_updated)
       counters_.not_received_rear_laser++;
+    if (!flags_.local_path_updated)
+      counters_.not_received_local_path++;
     if (params_.allowable_num_of_not_received < counters_.not_received_front_laser)
     {
       front_laser_.reset();
