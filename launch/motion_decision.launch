@@ -36,17 +36,17 @@
     <arg name="battery/full_charge_voltage" default="24.0"/>
     <arg name="battery/cutoff_voltage" default="20.0"/>
     <!-- Published topic -->
-    <arg name="cmd_vel" default="/cmd_vel"/>
+    <arg name="cmd_vel" default="cmd_vel"/>
     <!-- Subscribed topics -->
-    <arg name="local_path/cmd_vel" default="/local_path/cmd_vel"/>
-    <arg name="local_map" default="/local_map"/>
-    <arg name="odom" default="/odom"/>
-    <arg name="front_laser/scan" default="/front_laser/scan"/>
-    <arg name="rear_laser/scan" default="/rear_laser/scan"/>
-    <arg name="battery_voltage" default="/battery_voltage"/>
+    <arg name="local_path/cmd_vel" default="local_path/cmd_vel"/>
+    <arg name="local_map" default="local_map"/>
+    <arg name="odom" default="odom"/>
+    <arg name="front_laser/scan" default="front_laser/scan"/>
+    <arg name="rear_laser/scan" default="rear_laser/scan"/>
+    <arg name="battery_voltage" default="battery_voltage"/>
 
     <!-- run motion_decision node -->
-    <node pkg="motion_decision" type="motion_decision" name="motion_decision" ns="$(arg ns)" output="$(arg output)" respawn="true">
+    <node pkg="motion_decision" type="motion_decision" name="motion_decision" output="$(arg output)" respawn="true">
         <!-- MotionDecisionParams -->
         <param name="use_rear_laser" value="$(arg use_rear_laser)"/>
         <param name="use_360_laser" value="$(arg use_360_laser)"/>
@@ -80,13 +80,13 @@
         <param name="battery/full_charge_voltage" value="$(arg battery/full_charge_voltage)"/>
         <param name="battery/cutoff_voltage" value="$(arg battery/cutoff_voltage)"/>
         <!-- Published topic -->
-        <remap from="/cmd_vel" to="$(arg cmd_vel)"/>
+        <remap from="cmd_vel" to="$(arg cmd_vel)"/>
         <!-- Subscribed topics -->
-        <remap from="/local_path/cmd_vel" to="$(arg local_path/cmd_vel)"/>
-        <remap from="/local_map" to="$(arg local_map)"/>
-        <remap from="/odom" to="$(arg odom)"/>
-        <remap from="/front_laser/scan" to="$(arg front_laser/scan)"/>
-        <remap from="/rear_laser/scan" to="$(arg rear_laser/scan)"/>
-        <remap from="/battery_voltage" to="$(arg battery_voltage)"/>
+        <remap from="local_path/cmd_vel" to="$(arg local_path/cmd_vel)"/>
+        <remap from="local_map" to="$(arg local_map)"/>
+        <remap from="odom" to="$(arg odom)"/>
+        <remap from="front_laser/scan" to="$(arg front_laser/scan)"/>
+        <remap from="rear_laser/scan" to="$(arg rear_laser/scan)"/>
+        <remap from="battery_voltage" to="$(arg battery_voltage)"/>
     </node>
 </launch>
