@@ -14,22 +14,22 @@
 
 MotionDecision::MotionDecision(void) : private_nh_("~")
 {
-  intersection_flag_pub_ = nh_.advertise<std_msgs::Bool>("/intersection_flag", 1, true);
-  cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1, true);
+  intersection_flag_pub_ = nh_.advertise<std_msgs::Bool>("intersection_flag", 1, true);
+  cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1, true);
 
-  emergency_stop_flag_sub_ = nh_.subscribe("/emergency_stop", 1, &MotionDecision::emergency_stop_flag_callback, this);
-  front_laser_sub_ = nh_.subscribe("/front_laser/scan", 1, &MotionDecision::front_laser_callback, this);
-  joy_sub_ = nh_.subscribe("/joy", 1, &MotionDecision::joy_callback, this);
-  local_path_cmd_vel_sub_ = nh_.subscribe("/local_path/cmd_vel", 1, &MotionDecision::local_path_cmd_vel_callback, this);
-  local_map_sub_ = nh_.subscribe("/local_map", 1, &MotionDecision::local_map_callback, this);
-  odom_sub_ = nh_.subscribe("/odom", 1, &MotionDecision::odom_callback, this);
-  rear_laser_sub_ = nh_.subscribe("/rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
-  battery_voltage_sub_ = nh_.subscribe("/battery_voltage", 1, &MotionDecision::battery_voltage_callback, this);
-  footprint_sub_ = nh_.subscribe("/footprint", 1, &MotionDecision::footprint_callback, this);
+  emergency_stop_flag_sub_ = nh_.subscribe("emergency_stop", 1, &MotionDecision::emergency_stop_flag_callback, this);
+  front_laser_sub_ = nh_.subscribe("front_laser/scan", 1, &MotionDecision::front_laser_callback, this);
+  joy_sub_ = nh_.subscribe("joy", 1, &MotionDecision::joy_callback, this);
+  local_path_cmd_vel_sub_ = nh_.subscribe("local_path/cmd_vel", 1, &MotionDecision::local_path_cmd_vel_callback, this);
+  local_map_sub_ = nh_.subscribe("local_map", 1, &MotionDecision::local_map_callback, this);
+  odom_sub_ = nh_.subscribe("odom", 1, &MotionDecision::odom_callback, this);
+  rear_laser_sub_ = nh_.subscribe("rear_laser/scan", 1, &MotionDecision::rear_laser_callback, this);
+  battery_voltage_sub_ = nh_.subscribe("battery_voltage", 1, &MotionDecision::battery_voltage_callback, this);
+  footprint_sub_ = nh_.subscribe("footprint", 1, &MotionDecision::footprint_callback, this);
 
   recovery_mode_flag_server_ =
-      nh_.advertiseService("/recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
-  task_stop_flag_server_ = nh_.advertiseService("/task/stop", &MotionDecision::task_stop_flag_callback, this);
+      nh_.advertiseService("recovery/available", &MotionDecision::recovery_mode_flag_callback, this);
+  task_stop_flag_server_ = nh_.advertiseService("task/stop", &MotionDecision::task_stop_flag_callback, this);
 
   load_params();
   if (params_.use_360_laser || params_.use_local_map)
