@@ -127,6 +127,7 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
       params_.allowable_num_of_not_received_local_path < counters_.not_received_local_path)
   {
     cmd_vel_ = geometry_msgs::Twist();
+    ROS_WARN_THROTTLE(1.0, "Local path cmd vel has not been updated");
   }
 
   if (msg->buttons[11] && msg->buttons[12])
