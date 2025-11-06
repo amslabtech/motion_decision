@@ -16,6 +16,7 @@ MotionDecision::MotionDecision(void) : private_nh_("~")
 {
   intersection_flag_pub_ = nh_.advertise<std_msgs::Bool>("intersection_flag", 1, true);
   cmd_vel_pub_ = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1, true);
+  cmd_vel_stamped_pub_ = nh_.advertise<geometry_msgs::TwistStamped>("cmd_vel_stamped", 1, true);
 
   emergency_stop_flag_sub_ = nh_.subscribe("emergency_stop", 1, &MotionDecision::emergency_stop_flag_callback, this);
   front_laser_sub_ = nh_.subscribe("front_laser/scan", 1, &MotionDecision::front_laser_callback, this);
@@ -115,11 +116,17 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
     {
       cmd_vel_.linear.x = flags_.move_trigger ? msg->axes[1] * params_.turbo_max_velocity : 0.0;
       cmd_vel_.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
+      cmd_vel_stamped_.twist.linear.x = flags_.move_trigger ? msg->axes[1] * params_.turbo_max_velocity : 0.0;
+      cmd_vel_stamped_.twist.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
+      cmd_vel_stamped_.header.stamp = ros::Time::now();
     }
     else
     {
       cmd_vel_.linear.x = flags_.move_trigger ? msg->axes[1] * params_.max_velocity : 0.0;
       cmd_vel_.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
+      cmd_vel_stamped_.twist.linear.x = flags_.move_trigger ? msg->axes[1] * params_.max_velocity : 0.0;
+      cmd_vel_stamped_.twist.angular.z = flags_.move_trigger ? msg->axes[0] * params_.max_yawrate : 0.0;
+      cmd_vel_stamped_.header.stamp = ros::Time::now();
     }
   }
   else if (
@@ -127,6 +134,7 @@ void MotionDecision::joy_callback(const sensor_msgs::JoyConstPtr &msg)
       params_.allowable_num_of_not_received_local_path < counters_.not_received_local_path)
   {
     cmd_vel_ = geometry_msgs::Twist();
+    cmd_vel_stamped_ = geometry_msgs::TwistStamped();
     ROS_WARN_THROTTLE(1.0, "Local path cmd vel has not been updated");
   }
 
@@ -507,6 +515,7 @@ void MotionDecision::process(void)
     }
 
     publish_cmd_vel(cmd_vel_);
+    publish_cmd_vel_stamped(cmd_vel_stamped_);
 
     flags_.front_laser_updated = false;
     flags_.rear_laser_updated = false;
@@ -671,6 +680,46 @@ void MotionDecision::publish_cmd_vel(geometry_msgs::Twist cmd_vel)
   print_status(cmd_vel);
 }
 
+void MotionDecision::publish_cmd_vel_stamped(geometry_msgs::TwistStamped cmd_vel_stamped)
+{
+  if (flags_.turbo_trigger)
+  {
+    cmd_vel_stamped.twist.linear.x = 0.0 < cmd_vel_stamped.twist.linear.x
+                           ? std::min(cmd_vel_stamped.twist.linear.x, static_cast<double>(params_.turbo_max_velocity))
+                           : std::max(cmd_vel_stamped.twist.linear.x, static_cast<double>(-params_.turbo_max_velocity));
+    cmd_vel_stamped.twist.angular.z = 0.0 < cmd_vel_stamped.twist.angular.z
+                            ? std::min(cmd_vel_stamped.twist.angular.z, static_cast<double>(params_.max_yawrate))
+                            : std::max(cmd_vel_stamped.twist.angular.z, -static_cast<double>(params_.max_yawrate));
+  }
+  else
+  {
+    cmd_vel_stamped.twist.linear.x = 0.0 < cmd_vel_stamped.twist.linear.x ? std::min(cmd_vel_stamped.twist.linear.x, static_cast<double>(params_.max_velocity))
+                                              : std::max(cmd_vel_stamped.twist.linear.x, static_cast<double>(-params_.max_velocity));
+    cmd_vel_stamped.twist.angular.z = 0.0 < cmd_vel_stamped.twist.angular.z
+                            ? std::min(cmd_vel_stamped.twist.angular.z, static_cast<double>(params_.max_yawrate))
+                            : std::max(cmd_vel_stamped.twist.angular.z, -static_cast<double>(params_.max_yawrate));
+  }
+
+  if (flags_.emergency_stop || mode_.first == "stop")
+    cmd_vel_stamped = geometry_msgs::TwistStamped();
+  if (mode_.first == "move" && mode_.second == "auto")
+  {
+    if (!front_laser_.has_value())
+    {
+      ROS_ERROR("Front laser data is not available..");
+      cmd_vel_stamped = geometry_msgs::TwistStamped();
+    }
+    if (!rear_laser_.has_value() && params_.use_rear_laser)
+    {
+      ROS_ERROR("Rear laser data is not available..");
+      cmd_vel_stamped = geometry_msgs::TwistStamped();
+    }
+  }
+
+  cmd_vel_stamped_pub_.publish(cmd_vel_stamped);
+  print_status_stamped(cmd_vel_stamped);
+}
+
 void MotionDecision::print_mode_status(const std::string &status, std::string color)
 {
   if (color == "")
@@ -766,9 +815,97 @@ void MotionDecision::print_status(const geometry_msgs::Twist &cmd_vel)
   std::cout << std::endl;
 }
 
+void MotionDecision::print_status_stamped(const geometry_msgs::TwistStamped &cmd_vel_stamped)
+{
+  if (mode_.first == "move" && mode_.second == "manual")
+  {
+    if (flags_.turbo_trigger)
+      print_mode_status("TURBO", CYAN);
+    else if (flags_.move_trigger)
+      print_mode_status("UNLOCKED", GREEN);
+    else
+      print_mode_status("LOCKED", RED);
+  }
+  else
+  {
+    print_mode_status();
+  }
+
+  if (0 < counters_.recovery && params_of_recovery_.available)
+  {
+    std::cout << "#####################" << std::endl;
+    std::cout << "### recovery mode ###" << std::endl;
+    std::cout << "#####################" << std::endl;
+  }
+  else if (0 < counters_.stuck && params_of_recovery_.available)
+  {
+    std::cout << "################" << std::endl;
+    std::cout << "### stuck!!! ###" << std::endl;
+    std::cout << "################" << std::endl;
+  }
+  if (flags_.emergency_stop)
+  {
+    std::cout << "######################" << std::endl;
+    std::cout << "### emergency stop ###" << std::endl;
+    std::cout << "######################" << std::endl;
+  }
+  if (flags_.task_stop)
+  {
+    std::cout << "#################" << std::endl;
+    std::cout << "### task stop ###" << std::endl;
+    std::cout << "#################" << std::endl;
+  }
+  if (flags_.intersection)
+  {
+    std::cout << "####################" << std::endl;
+    std::cout << "### intersection ###" << std::endl;
+    std::cout << "####################" << std::endl;
+  }
+  if (battery_info_.used)
+  {
+    if (battery_info_.current_percentage < 25.0)
+      std::cout << "battery         : " << RED << battery_info_.current_percentage << " %" << RESET_COLOR << std::endl;
+    else if (battery_info_.current_percentage < 50.0)
+      std::cout << "battery         : " << YELLOW << battery_info_.current_percentage << " %" << RESET_COLOR
+                << std::endl;
+    else
+      std::cout << "battery         : " << battery_info_.current_percentage << " %" << std::endl;
+  }
+  if (laser_info_.front_min_range == -1.0)
+    std::cout << "min front laser : " << RED << laser_info_.front_min_range << RESET_COLOR << std::endl;
+  else
+    std::cout << "min front laser : " << laser_info_.front_min_range << std::endl;
+  if (params_.use_rear_laser)
+  {
+    if (laser_info_.front_min_range == -1.0)
+      std::cout << "min rear laser : " << RED << laser_info_.rear_min_range << RESET_COLOR << std::endl;
+    else
+      std::cout << "min rear laser  : " << laser_info_.rear_min_range << std::endl;
+  }
+  if (params_of_recovery_.available)
+  {
+    std::cout << "recovery mode   : available" << std::endl;
+    std::cout << "recovery time   : " << counters_.recovery / static_cast<float>(params_.hz) << std::endl;
+    std::cout << "stuck time      : " << counters_.stuck / static_cast<float>(params_.hz) << std::endl;
+  }
+  else
+  {
+    std::cout << "recovery mode   : unavailable" << std::endl;
+  }
+  if (mode_.first == "move")
+  {
+    std::cout << "cmd vel :" << std::endl;
+    std::cout << "  stamp.sec  : " << cmd_vel_stamped.header.stamp.sec << std::endl;
+    std::cout << "  linear.x   : " << cmd_vel_stamped.twist.linear.x << std::endl;
+    std::cout << "  angular.z  : " << cmd_vel_stamped.twist.angular.z << std::endl;
+  }
+  std::cout << std::endl;
+}
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "motion_decision");
+  // ros::Time::init();
   MotionDecision motion_decision;
   motion_decision.process();
 

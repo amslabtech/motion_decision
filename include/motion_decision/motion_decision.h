@@ -15,6 +15,7 @@
 #define YELLOW "\033[33m"
 
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <nav_msgs/Odometry.h>
@@ -298,6 +299,7 @@ private:
    * @param [in] cmd_vel Command velocity
    */
   void publish_cmd_vel(geometry_msgs::Twist cmd_vel);
+  void publish_cmd_vel_stamped(geometry_msgs::TwistStamped cmd_vel_stamped);
 
   /**
    * @brief Print mode status function
@@ -311,6 +313,7 @@ private:
    * @param [in] cmd_vel Command velocity
    */
   void print_status(const geometry_msgs::Twist &cmd_vel);
+  void print_status_stamped(const geometry_msgs::TwistStamped &cmd_vel_stamped);
 
   MotionDecisionParams params_;
   RecoveryParams params_of_recovery_;
@@ -328,6 +331,7 @@ private:
   ros::NodeHandle private_nh_;
   ros::Publisher intersection_flag_pub_;
   ros::Publisher cmd_vel_pub_;
+  ros::Publisher cmd_vel_stamped_pub_;
   ros::Subscriber emergency_stop_flag_sub_;
   ros::Subscriber front_laser_sub_;
   ros::Subscriber joy_sub_;
@@ -341,6 +345,7 @@ private:
   ros::ServiceServer task_stop_flag_server_;
 
   geometry_msgs::Twist cmd_vel_;
+  geometry_msgs::TwistStamped cmd_vel_stamped_;
   geometry_msgs::Twist odom_vel_;
   std::optional<sensor_msgs::LaserScan> front_laser_;
   std::optional<sensor_msgs::LaserScan> rear_laser_;

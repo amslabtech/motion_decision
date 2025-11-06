@@ -37,6 +37,7 @@
     <arg name="battery/cutoff_voltage" default="20.0"/>
     <!-- Published topic -->
     <arg name="cmd_vel" default="cmd_vel"/>
+    <arg name="cmd_vel_stamped" default="cmd_vel_stamped"/>
     <!-- Subscribed topics -->
     <arg name="local_path/cmd_vel" default="local_path/cmd_vel"/>
     <arg name="local_map" default="local_map"/>
@@ -81,6 +82,7 @@
         <param name="battery/cutoff_voltage" value="$(arg battery/cutoff_voltage)"/>
         <!-- Published topic -->
         <remap from="cmd_vel" to="$(arg cmd_vel)"/>
+        <remap from="cmd_vel_stamped" to="$(arg cmd_vel_stamped)"/>
         <!-- Subscribed topics -->
         <remap from="local_path/cmd_vel" to="$(arg local_path/cmd_vel)"/>
         <remap from="local_map" to="$(arg local_map)"/>
