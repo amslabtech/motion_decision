@@ -1,54 +1,32 @@
-cmake_minimum_required(VERSION 3.16.3)
+cmake_minimum_required(VERSION 3.8)
 project(motion_decision)
 
-add_compile_options(-std=c++17 -O2 -g)
-
-find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
-  nav_msgs
-  roscpp
-  sensor_msgs
-  std_msgs
-  std_srvs
-)
-find_package(Eigen3 REQUIRED COMPONENTS system)
-
-###################################
-## catkin specific configuration ##
-###################################
-catkin_package()
-
-###########
-## Build ##
-###########
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
-)
-
-add_executable(${PROJECT_NAME} src/${PROJECT_NAME}.cpp)
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
-
-#############
-## Install ##
-#############
-install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(DIRECTORY launch sounds
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
-
-#############
-## Testing ##
-#############
-if(CATKIN_ENABLE_TESTING)
-    find_package(rostest REQUIRED)
-    find_package(roslint REQUIRED)
-    roslint_cpp()
-    roslint_add_test()
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
+
+ament_auto_add_executable(${PROJECT_NAME}
+  src/motion_decision.cpp
+)
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+
+# コード品質を自動的にチェック
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  set(ament_cmake_copyright_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_auto_package()

@@ -4,89 +4,29 @@
     <arg name="output" default="log" doc="screen or log"/>
 
     <!-- MotionDecisionParams -->
-    <arg name="use_rear_laser" default="true"/>
-    <arg name="use_360_laser" default="false"/>
-    <arg name="use_local_map" default="false"/>
-    <arg name="use_footprint" default="false"/>
     <arg name="enable_turbo_mode" default="false"/>
     <arg name="hz" default="20"/>
-    <arg name="allowable_num_of_not_received" default="3"/>
     <arg name="allowable_num_of_not_received_local_path" default="1"/>
     <arg name="max_velocity" default="1.0"/>
     <arg name="turbo_max_velocity" default="1.66"/>
     <arg name="max_yawrate" default="1.0"/>
-    <arg name="dt" default="0.1"/>
-    <arg name="predict_time" default="1.0"/>
-    <arg name="collision_distance" default="0.4"/>
-    <arg name="safety_collision_time" default="0.5"/>
-    <arg name="stuck_time_threshold" default="1.0"/>
-    <arg name="stop_sound_path" default="$(find motion_decision)/sounds/warning1.wav"/>
-    <arg name="recovery_sound_path" default="$(find motion_decision)/sounds/warning2.wav"/>
-    <arg name="task_stop_sound_path" default="$(find motion_decision)/sounds/decision4.wav"/>
-    <!-- RecoveryParams -->
-    <arg name="recovery/available" default="true"/>
-    <arg name="recovery/sim_back" default="true"/>
-    <arg name="recovery/max_velocity" default="0.3"/>
-    <arg name="recovery/max_yawrate" default="0.3"/>
-    <arg name="recovery/velocity_resolution" default="0.1"/>
-    <arg name="recovery/yawrate_resolution" default="0.1"/>
-    <arg name="recovery/spin_turn_speed" default="0.2"/>
-    <arg name="recovery/time" default="3.0"/>
-    <!-- BatteryParams -->
-    <arg name="battery/full_charge_voltage" default="24.0"/>
-    <arg name="battery/cutoff_voltage" default="20.0"/>
     <!-- Published topic -->
     <arg name="cmd_vel" default="cmd_vel"/>
     <!-- Subscribed topics -->
     <arg name="local_path/cmd_vel" default="local_path/cmd_vel"/>
-    <arg name="local_map" default="local_map"/>
-    <arg name="odom" default="odom"/>
-    <arg name="front_laser/scan" default="front_laser/scan"/>
-    <arg name="rear_laser/scan" default="rear_laser/scan"/>
-    <arg name="battery_voltage" default="battery_voltage"/>
 
     <!-- run motion_decision node -->
     <node pkg="motion_decision" type="motion_decision" name="motion_decision" output="$(arg output)" respawn="true">
         <!-- MotionDecisionParams -->
-        <param name="use_rear_laser" value="$(arg use_rear_laser)"/>
-        <param name="use_360_laser" value="$(arg use_360_laser)"/>
-        <param name="use_local_map" value="$(arg use_local_map)"/>
-        <param name="use_footprint" value="$(arg use_footprint)"/>
         <param name="enable_turbo_mode" value="$(arg enable_turbo_mode)"/>
         <param name="hz" value="$(arg hz)"/>
-        <param name="allowable_num_of_not_received" value="$(arg allowable_num_of_not_received)"/>
         <param name="allowable_num_of_not_received_local_path" value="$(arg allowable_num_of_not_received_local_path)"/>
         <param name="max_velocity" value="$(arg max_velocity)"/>
         <param name="turbo_max_velocity" value="$(arg turbo_max_velocity)"/>
         <param name="max_yawrate" value="$(arg max_yawrate)"/>
-        <param name="dt" value="$(arg dt)"/>
-        <param name="predict_time" value="$(arg predict_time)"/>
-        <param name="collision_distance" value="$(arg collision_distance)"/>
-        <param name="safety_collision_time" value="$(arg safety_collision_time)"/>
-        <param name="stuck_time_threshold" value="$(arg stuck_time_threshold)"/>
-        <param name="stop_sound_path" value="$(arg stop_sound_path)"/>
-        <param name="recovery_sound_path" value="$(arg recovery_sound_path)"/>
-        <param name="task_stop_sound_path" value="$(arg task_stop_sound_path)"/>
-        <!-- RecoveryParams -->
-        <param name="recovery/available" value="$(arg recovery/available)"/>
-        <param name="recovery/sim_back" value="$(arg recovery/sim_back)"/>
-        <param name="recovery/max_velocity" value="$(arg recovery/max_velocity)"/>
-        <param name="recovery/max_yawrate" value="$(arg recovery/max_yawrate)"/>
-        <param name="recovery/velocity_resolution" value="$(arg recovery/velocity_resolution)"/>
-        <param name="recovery/yawrate_resolution" value="$(arg recovery/yawrate_resolution)"/>
-        <param name="recovery/spin_turn_speed" value="$(arg recovery/spin_turn_speed)"/>
-        <param name="recovery/time" value="$(arg recovery/time)"/>
-        <!-- BatteryParams -->
-        <param name="battery/full_charge_voltage" value="$(arg battery/full_charge_voltage)"/>
-        <param name="battery/cutoff_voltage" value="$(arg battery/cutoff_voltage)"/>
         <!-- Published topic -->
         <remap from="cmd_vel" to="$(arg cmd_vel)"/>
         <!-- Subscribed topics -->
         <remap from="local_path/cmd_vel" to="$(arg local_path/cmd_vel)"/>
-        <remap from="local_map" to="$(arg local_map)"/>
-        <remap from="odom" to="$(arg odom)"/>
-        <remap from="front_laser/scan" to="$(arg front_laser/scan)"/>
-        <remap from="rear_laser/scan" to="$(arg rear_laser/scan)"/>
-        <remap from="battery_voltage" to="$(arg battery_voltage)"/>
     </node>
 </launch>
